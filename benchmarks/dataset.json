@@ -1,0 +1,107 @@
+{
+  "single_words": [
+    {
+      "id": "w1",
+      "text": "unflinching",
+      "context": "His unflinching resolve impressed everyone.",
+      "ground_truth_pt": "inabalável",
+      "alternatives_pt": ["firme", "resoluto", "destemido"]
+    },
+    {
+      "id": "w2",
+      "text": "serendipity",
+      "context": "Finding that rare edition was pure serendipity.",
+      "ground_truth_pt": "serendipidade",
+      "alternatives_pt": ["acaso feliz", "sorte inesperada", "feliz coincidência"]
+    },
+    {
+      "id": "w3",
+      "text": "preposterous",
+      "context": "The very idea that he had cheated was preposterous.",
+      "ground_truth_pt": "absurdo",
+      "alternatives_pt": ["ridículo", "descabido", "sem cabimento"]
+    },
+    {
+      "id": "w4",
+      "text": "ephemeral",
+      "context": "Fame in the modern era is often ephemeral.",
+      "ground_truth_pt": "efêmero",
+      "alternatives_pt": ["passageiro", "transitório", "fugaz"]
+    }
+  ],
+  "idioms_and_phrasal_verbs": [
+    {
+      "id": "i1",
+      "text": "bite the bullet",
+      "context": "I decided I had to bite the bullet and finish the report tonight.",
+      "ground_truth_pt": "encarar a situação",
+      "alternatives_pt": ["engolir o choro", "fazer das tripas coração", "enfrentar a realidade"]
+    },
+    {
+      "id": "i2",
+      "text": "hit the nail on the head",
+      "context": "Her analysis of the book really hit the nail on the head.",
+      "ground_truth_pt": "acertou na mosca",
+      "alternatives_pt": ["acertou em cheio", "foi direto ao ponto"]
+    },
+    {
+      "id": "i3",
+      "text": "call it a day",
+      "context": "We've been reading for five hours, let's call it a day.",
+      "ground_truth_pt": "dar por encerrado o dia",
+      "alternatives_pt": ["parar por hoje", "encerrar o expediente"]
+    },
+    {
+      "id": "i4",
+      "text": "cut corners",
+      "context": "When building cryogenic attenuators, you cannot cut corners.",
+      "ground_truth_pt": "economizar nos detalhes / fazer de qualquer jeito",
+      "alternatives_pt": ["tomar atalhos imprudentes", "agir de forma desleixada", "cortar custos essenciais"]
+    }
+  ],
+  "sentences": [
+    {
+      "id": "s1",
+      "text": "The erratic behavior of the financial markets caught even seasoned economists completely off guard.",
+      "ground_truth_pt": "O comportamento errático dos mercados financeiros pegou até mesmo economistas experientes completamente de surpresa."
+    },
+    {
+      "id": "s2",
+      "text": "Despite vehement objections from the board, she pushed forward with the radical restructuring plan.",
+      "ground_truth_pt": "Apesar das veementes objeções do conselho, ela avançou com o plano radical de reestruturação."
+    }
+  ],
+  "book_paragraphs": [
+    {
+      "id": "p1",
+      "title": "Excerpt from 1984 (George Orwell)",
+      "text": "It was a bright cold day in April, and the clocks were striking thirteen. Winston Smith, his chin nuzzled into his breast in an effort to escape the vile wind, slipped quickly through the glass doors of Victory Mansions, though not quickly enough to prevent a swirl of gritty dust from entering along with him.",
+      "ground_truth_pt": "Era um dia frio e luminoso de abril, e os relógios batiam treze horas. Winston Smith, com o queixo enterrado no peito num esforço para escapar do vento vil, esgueirou-se rapidamente pelas portas de vidro das Mansões Victory, embora não rápido o bastante para impedir que um redemoinho de poeira áspera entrasse junto com ele."
+    },
+    {
+      "id": "p2",
+      "title": "Technical / Scientific Reading Excerpt",
+      "text": "Neural networks rely on backpropagation to minimize the objective loss function across high-dimensional parameter spaces. However, vanishing gradients and overfitting remain persistent bottlenecks when training deep architectures without proper residual connections and normalization layers.",
+      "ground_truth_pt": "Redes neurais dependem da retropropagação para minimizar a função de perda em espaços de parâmetros de alta dimensão. No entanto, o desvanecimento de gradientes e o sobreajuste permanecem como gargalos persistentes ao treinar arquiteturas profundas sem conexões residuais e camadas de normalização adequadas."
+    }
+  ],
+  "complex_a4_page": {
+    "id": "a4_1",
+    "title": "Cryogenic Microwave Routing and Scalability Bottlenecks in Superconducting Quantum Processors",
+    "metadata": {
+      "domain": "Quantum Hardware Engineering",
+      "authors": "Dr. Helena Vance, Dr. Arthur Pendelton",
+      "institution": "Cambridge Cryogenic Laboratory"
+    },
+    "body_text": "The implementation of large-scale fault-tolerant quantum computers represents one of the most demanding engineering challenges in contemporary physics. Superconducting circuits based on transmon qubits have achieved remarkable milestones, including quantum computational supremacy and error detection thresholds. However, scaling beyond several hundred physical qubits introduces a severe bottleneck: the interconnect problem. At millikelvin temperatures inside dilution refrigerators, available cooling power is drastically limited.",
+    "diagram_texts": [
+      "Room Temp (300K): Pulse Arbitrary Waveform Generator",
+      "4K Stage: High-Density Attenuator Block (-20dB)",
+      "Still Stage (0.8K): Low-Noise Cryo-Filter",
+      "Cold Plate (100mK): Thermal Heat Sink Braid",
+      "Mixing Chamber (15mK): Superconducting Transmon Processor",
+      "Dispersive Readout Coplanar Resonator Line"
+    ],
+    "ground_truth_pt_body": "A implementação de computadores quânticos tolerantes a falhas em larga escala representa um dos desafios de engenharia mais exigentes da física contemporânea. Circuitos supercondutores baseados em qubits transmon alcançaram marcos notáveis, incluindo supremacia quântica computacional e limiares de detecção de erros. No entanto, o escalonamento além de várias centenas de qubits físicos introduz um gargalo severo: o problema de interconexão. Em temperaturas de milikelvin dentro de refrigeradores de diluição, a potência de resfriamento disponível é drasticamente limitada."
+  }
+}

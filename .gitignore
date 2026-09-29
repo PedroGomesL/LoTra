@@ -1,0 +1,113 @@
+# ==============================================================================
+# LoTra - .gitignore
+# Regras estritas de segurança, privacidade e exclusão de arquivos locais/pessoais
+# ==============================================================================
+
+# --- Dados Pessoais, Credenciais, Tokens e Chaves ---
+*.env
+*.env.*
+*.key
+*.pem
+*.cert
+*.crt
+*.pfx
+*token*
+*secret*
+*credential*
+secure_keys/
+keys/
+
+# --- Bancos de Dados Locais e Logs de Transação ---
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+test.db
+reader_vault.db
+
+# --- Caches e Bytecode Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Ambientes Virtuais (Virtual Environments) ---
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+surya_venv/
+
+# --- Testes, Cobertura e Caches de IDE ---
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+htmlcov/
+.tox/
+.nox/
+
+# --- Caches de Editores e IDEs ---
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# --- Diretórios e Arquivos Temporários de Imagens Geradas / Scans ---
+test_images/
+tmp/
+temp/
+*.tmp
+*.temp
+thumbnails/
+backups/
+
+# --- Logs do Sistema e Diagnóstico ---
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Lixo do Sistema Operacional (Windows / macOS / Linux) ---
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes

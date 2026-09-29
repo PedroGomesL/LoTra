@@ -107,7 +107,7 @@ LoTra/
 
 ```bash
 # Clone o repositório
-git clone https://github.com/PedroGomesLima/LoTra.git
+git clone https://github.com/PedroGomesL/LoTra.git
 cd LoTra
 
 # Crie e ative um ambiente virtual
