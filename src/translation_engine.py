@@ -545,12 +545,30 @@ OFFLINE_TECHNICAL_GLOSSARY = {
     "by": "por",
 }
 
+try:
+    from offline_dictionary import (
+        OFFLINE_GLUED_WORDS,
+        OFFLINE_MULTIWORD_EXPRESSIONS,
+        CORE_ACADEMIC_LEXICON,
+        MorphologyEngine
+    )
+except ImportError:
+    OFFLINE_GLUED_WORDS = {}
+    OFFLINE_MULTIWORD_EXPRESSIONS = {}
+    CORE_ACADEMIC_LEXICON = {}
+    class MorphologyEngine:
+        @classmethod
+        def translate_token(cls, tok, lex):
+            return lex.get(tok.lower())
+
 class OfflineContextTranslator:
     """
     Tradutor offline 100% autônomo baseado em:
-    1. Correspondência gananciosa (greedy longest-match) de locuções compostas e termos técnicos.
-    2. Tradução token a token com preservação estrita de espaçamento, pontuação e casing.
-    3. Reordenação e concordância que evitam frases coladas ou palavras residuais em inglês.
+    1. Descolamento prévio de expressões aglutinadas de extração PDF de 2 colunas.
+    2. Correspondência gananciosa (greedy longest-match) de locuções compostas e termos técnicos.
+    3. Motor morfológico avançado (plurais, sufixos verbais -ing/-ed, advérbios -ly, cognatos -ção/-dade).
+    4. Tradução token a token com preservação estrita de espaçamento, pontuação e casing.
+    5. Cobertura léxica científica de alta fidelidade sem vazamento de palavras residuais em inglês.
     """
     
     @classmethod
@@ -558,10 +576,17 @@ class OfflineContextTranslator:
         clean = text.strip()
         if not clean:
             return ""
+
+        # 1. Descolamento de palavras aglutinadas comuns em PDFs
+        if OFFLINE_GLUED_WORDS:
+            for glued, separated in OFFLINE_GLUED_WORDS.items():
+                if glued.lower() in clean.lower():
+                    pattern = re.compile(rf'(?<!\w){re.escape(glued)}(?!\w)', re.IGNORECASE)
+                    clean = pattern.sub(separated, clean)
             
         lower_clean = clean.lower()
 
-        # 1. Correspondência exata direta no glossário
+        # 2. Correspondência exata direta no glossário técnico
         if lower_clean in OFFLINE_TECHNICAL_GLOSSARY:
             res = OFFLINE_TECHNICAL_GLOSSARY[lower_clean]
             if clean.isupper():
@@ -570,28 +595,28 @@ class OfflineContextTranslator:
                 return res.capitalize()
             return res
 
-        # 2. Divide em parágrafos para preservar quebras de parágrafo sem grudar linhas
-        paragraphs = clean.split("\n\n")
-        translated_paragraphs = []
+        # 3. Consolidação de dicionários (Técnico + Léxico Científico + Expressões Multi-palavras)
+        all_single_words = dict(CORE_ACADEMIC_LEXICON)
+        all_multi_words = dict(OFFLINE_MULTIWORD_EXPRESSIONS)
 
-        # Separa termos multi-palavras dos termos uni-palavras
-        multi_word_terms = []
-        single_word_terms = {}
         for en, pt in OFFLINE_TECHNICAL_GLOSSARY.items():
             if " " in en or "-" in en:
-                multi_word_terms.append((en, pt))
+                all_multi_words[en] = pt
             else:
-                single_word_terms[en] = pt
+                all_single_words[en] = pt
 
-        # Ordena locuções compostas pela mais longa primeiro
-        multi_word_terms.sort(key=lambda x: len(x[0]), reverse=True)
+        # Ordena locuções compostas pela mais longa primeiro para greedy matching
+        multi_word_terms = sorted(all_multi_words.items(), key=lambda x: len(x[0]), reverse=True)
+
+        # 4. Divide em parágrafos para preservar quebras sem grudar blocos de texto
+        paragraphs = clean.split("\n\n")
+        translated_paragraphs = []
 
         for para in paragraphs:
             para = para.strip()
             if not para:
                 continue
 
-            # Preserva quebras simples dentro do parágrafo (ex: listas)
             lines = para.split("\n")
             translated_lines = []
 
@@ -605,7 +630,6 @@ class OfflineContextTranslator:
                 ph_idx = 0
 
                 for en, pt in multi_word_terms:
-                    # Regex com fronteiras de limites de palavra flexíveis
                     escaped_en = re.escape(en)
                     pattern = re.compile(rf'(?<!\w){escaped_en}(?!\w)', re.IGNORECASE)
                     
@@ -624,8 +648,8 @@ class OfflineContextTranslator:
 
                     working_line = pattern.sub(_ph_sub, working_line)
 
-                # B. Tokeniza a linha preservando pontuações e espaços
-                tokens = re.findall(r'(__LOTRA_PH_\d+__|[a-zA-ZÀ-ÿ0-9]+|[^\s\w])', working_line)
+                # B. Tokeniza a linha preservando pontuações, hífens e apóstrofos
+                tokens = re.findall(r'(__LOTRA_PH_\d+__|[a-zA-ZÀ-ÿ0-9\'-]+|[^\s\w])', working_line)
                 translated_tokens = []
 
                 for tok in tokens:
@@ -633,8 +657,9 @@ class OfflineContextTranslator:
                         translated_tokens.append(placeholders[tok])
                     else:
                         tok_lower = tok.lower()
-                        if tok_lower in single_word_terms:
-                            pt_word = single_word_terms[tok_lower]
+                        # Verificação 1: Correspondência direta no léxico consolidado
+                        if tok_lower in all_single_words:
+                            pt_word = all_single_words[tok_lower]
                             if tok.isupper():
                                 translated_tokens.append(pt_word.upper())
                             elif tok[0].isupper():
@@ -642,13 +667,22 @@ class OfflineContextTranslator:
                             else:
                                 translated_tokens.append(pt_word)
                         else:
-                            translated_tokens.append(tok)
+                            # Verificação 2: Motor Morfológico (plurais, particípios, gerúndios, cognatos)
+                            morph_trans = MorphologyEngine.translate_token(tok, all_single_words)
+                            if morph_trans:
+                                if tok.isupper():
+                                    translated_tokens.append(morph_trans.upper())
+                                elif tok[0].isupper():
+                                    translated_tokens.append(morph_trans.capitalize())
+                                else:
+                                    translated_tokens.append(morph_trans)
+                            else:
+                                translated_tokens.append(tok)
 
                 # C. Reconstroi a linha garantindo que pontuações não fiquem com espaços errados
-                # e que palavras adjacentes tenham sempre um espaço único
                 built_line = ""
-                no_space_before = {'.', ',', ';', ':', '!', '?', ')', ']', '}', '%'}
-                no_space_after = {'(', '[', '{', '$', '¿', '¡'}
+                no_space_before = {'.', ',', ';', ':', '!', '?', ')', ']', '}', '%', "’", "'"}
+                no_space_after = {'(', '[', '{', '$', '¿', '¡', "’", "'"}
 
                 for i, tok in enumerate(translated_tokens):
                     if i == 0:
@@ -665,9 +699,9 @@ class OfflineContextTranslator:
             translated_paragraphs.append("\n".join(translated_lines))
 
         result = "\n\n".join(translated_paragraphs)
-        # Limpeza final de espaços redundantes
         result = re.sub(r'[ \t]+', ' ', result).strip()
         return result
+
 
 
 class ONNXTranslationEngine:
