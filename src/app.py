@@ -130,8 +130,8 @@ class LoTraApp:
     def start_hud_service(self):
         """Inicia o daemon de segundo plano com escuta de atalho global."""
         print("[LoTra] Iniciando serviço LoTra HUD no Windows...")
-        print("[LoTra] Atalho global ativado: [Ctrl + Alt + T]")
-        print("[LoTra] Dica: Selecione qualquer texto em qualquer leitor/navegador, copie (Ctrl+C) e pressione Ctrl+Alt+T.")
+        print("[LoTra] Atalhos globais ativados: [Alt + Q] e [Ctrl + Alt + T]")
+        print("[LoTra] Dica: Selecione o texto no seu leitor de PDF/livro, copie (Ctrl+C) e pressione Alt+Q.")
         
         self.hotkey_listener = HotkeyListener(callback=self.trigger_quick_translation_from_clipboard)
         self.hotkey_listener.start()

@@ -194,81 +194,41 @@ class HUDTooltip:
         window.attributes("-topmost", True)
         window.attributes("-alpha", 0.96) # Leve translucidez moderna
 
-        # Paleta de cores escura (Catppuccin Mocha / Tokyo Night)
+        # Paleta de cores minimalista escura
         bg_dark = "#181825"
-        card_bg = "#1e1e2e"
         border_color = "#313244"
-        accent_blue = "#89b4fa"
-        accent_green = "#a6e3a1"
-        accent_yellow = "#f9e2af"
         text_primary = "#cdd6f4"
-        text_secondary = "#a6adc8"
-        btn_bg = "#313244"
-        btn_hover = "#45475a"
 
-        # Frame principal com borda sutil
-        main_frame = tk.Frame(window, bg=card_bg, highlightbackground=border_color, highlightthickness=2, padx=12, pady=10)
+        # Frame único minimalista com borda sutil e preenchimento confortável
+        main_frame = tk.Frame(window, bg=bg_dark, highlightbackground=border_color, highlightthickness=1, padx=12, pady=8)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 1. Header (Logo + Engine Badge + Latência + Botão Fechar)
-        header_frame = tk.Frame(main_frame, bg=card_bg)
-        header_frame.pack(fill=tk.X, pady=(0, 6))
-
-        logo_label = tk.Label(header_frame, text="⚡ LoTra HUD", font=("Segoe UI", 10, "bold"), fg=accent_blue, bg=card_bg)
-        logo_label.pack(side=tk.LEFT)
-
-        engine_badge = tk.Label(header_frame, text=f"• {engine_name[:32]}", font=("Segoe UI", 8), fg=text_secondary, bg=card_bg)
-        engine_badge.pack(side=tk.LEFT, padx=6)
-
-        latency_badge = tk.Label(header_frame, text=f"⏱ {latency_ms:.1f}ms", font=("Segoe UI", 8, "bold"), fg=accent_green, bg=card_bg)
-        latency_badge.pack(side=tk.LEFT, padx=4)
-
-        close_btn = tk.Label(header_frame, text=" ✕ ", font=("Segoe UI", 9, "bold"), fg="#f38ba8", bg=card_bg, cursor="hand2")
-        close_btn.pack(side=tk.RIGHT)
-        close_btn.bind("<Button-1>", lambda e: self.dismiss())
-
-        # 2. Texto de Origem (se presente e diferente da tradução)
-        if source_text and source_text.strip() != translated_text.strip():
-            src_display = source_text.strip()
-            if len(src_display) > 120:
-                src_display = src_display[:117] + "..."
-            src_label = tk.Label(main_frame, text=f'"{src_display}"', font=("Segoe UI", 9, "italic"), fg=text_secondary, bg=card_bg, wraplength=420, justify=tk.LEFT)
-            src_label.pack(anchor="w", pady=(0, 4))
-
-        # Divisor sutil
-        sep = tk.Frame(main_frame, height=1, bg=border_color)
-        sep.pack(fill=tk.X, pady=4)
-
-        # 3. Texto Traduzido (Destaque Principal)
         trans_display = translated_text.strip()
+        # Se for texto curto (palavra ou frase pequena), mantém linha única compacta; se for longo, quebra em 420px
+        wrap_width = 420 if len(trans_display) > 40 else 0
+
+        # Único elemento: Texto traduzido limpo, sem ícones, cabeçalhos ou dados adicionais
         trans_label = tk.Label(
             main_frame,
             text=trans_display,
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 10),
             fg=text_primary,
-            bg=card_bg,
-            wraplength=440,
+            bg=bg_dark,
+            wraplength=wrap_width,
             justify=tk.LEFT
         )
-        trans_label.pack(anchor="w", pady=(4, 8))
+        trans_label.pack(anchor="w")
 
-        # 4. Barra de Ações (Copiar, Tecla Esc para fechar)
-        actions_frame = tk.Frame(main_frame, bg=card_bg)
-        actions_frame.pack(fill=tk.X, pady=(2, 0))
-
-        def copy_action():
+        # Clicar em qualquer parte da janela copia a tradução e fecha
+        def on_click(event):
             set_windows_clipboard_text(trans_display)
-            copy_btn.config(text="✓ Copiado!", fg=accent_green)
-            window.after(1200, lambda: copy_btn.config(text="📋 Copiar", fg=text_primary))
+            self.dismiss()
 
-        copy_btn = tk.Label(actions_frame, text="📋 Copiar", font=("Segoe UI", 8, "bold"), fg=text_primary, bg=btn_bg, padx=8, pady=3, cursor="hand2")
-        copy_btn.pack(side=tk.LEFT)
-        copy_btn.bind("<Button-1>", lambda e: copy_action())
+        window.bind("<Button-1>", on_click)
+        main_frame.bind("<Button-1>", on_click)
+        trans_label.bind("<Button-1>", on_click)
 
-        hint_label = tk.Label(actions_frame, text="(Esc ou clique fora fecha)", font=("Segoe UI", 8), fg=text_secondary, bg=card_bg)
-        hint_label.pack(side=tk.RIGHT)
-
-        # Binds para fechar com Esc ou clique
+        # Fecha imediatamente com Esc ou ao clicar fora (perda de foco)
         window.bind("<Escape>", lambda e: self.dismiss())
         window.bind("<FocusOut>", lambda e: self.dismiss())
 
@@ -339,10 +299,8 @@ class HUDTooltip:
 class HotkeyListener:
     """Escutador de tecla de atalho nativo para Windows (Win32 RegisterHotKey e GetAsyncKeyState)."""
 
-    def __init__(self, callback: Callable[[], None], hotkey_vk: int = VK_T, modifiers: int = (MOD_CONTROL | MOD_ALT)):
+    def __init__(self, callback: Callable[[], None]):
         self.callback = callback
-        self.hotkey_vk = hotkey_vk
-        self.modifiers = modifiers
         self.running = False
         self._thread: Optional[threading.Thread] = None
 
@@ -360,18 +318,22 @@ class HotkeyListener:
 
     def _hotkey_loop(self):
         user32 = ctypes.windll.user32
-        HOTKEY_ID = 101
+        HOTKEY_ID_T = 101
+        HOTKEY_ID_Q = 102
+        VK_Q = 0x51
+        VK_T = 0x54
 
-        # Tenta registrar via RegisterHotKey
-        registered = user32.RegisterHotKey(0, HOTKEY_ID, self.modifiers, self.hotkey_vk)
-        
-        if registered:
+        # Registra ambos os atalhos: Ctrl+Alt+T e Alt+Q
+        reg_t = user32.RegisterHotKey(0, HOTKEY_ID_T, (MOD_CONTROL | MOD_ALT), VK_T)
+        reg_q = user32.RegisterHotKey(0, HOTKEY_ID_Q, MOD_ALT, VK_Q)
+
+        if reg_t or reg_q:
             msg = ctypes.wintypes.MSG()
             try:
                 while self.running:
                     # PeekMessageW sem bloquear indefinidamente
                     if user32.PeekMessageW(ctypes.byref(msg), 0, 0, 0, 1): # PM_REMOVE
-                        if msg.message == WM_HOTKEY and msg.wParam == HOTKEY_ID:
+                        if msg.message == WM_HOTKEY and msg.wParam in (HOTKEY_ID_T, HOTKEY_ID_Q):
                             try:
                                 self.callback()
                             except Exception as e:
@@ -380,7 +342,10 @@ class HotkeyListener:
                         user32.DispatchMessageW(ctypes.byref(msg))
                     time.sleep(0.04)
             finally:
-                user32.UnregisterHotKey(0, HOTKEY_ID)
+                if reg_t:
+                    user32.UnregisterHotKey(0, HOTKEY_ID_T)
+                if reg_q:
+                    user32.UnregisterHotKey(0, HOTKEY_ID_Q)
         else:
             # Fallback para polling via GetAsyncKeyState (não requer registro exclusivo)
             VK_CONTROL = 0x11
@@ -388,9 +353,11 @@ class HotkeyListener:
             while self.running:
                 ctrl_down = (user32.GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0
                 alt_down = (user32.GetAsyncKeyState(VK_MENU) & 0x8000) != 0
-                key_down = (user32.GetAsyncKeyState(self.hotkey_vk) & 0x8000) != 0
+                t_down = (user32.GetAsyncKeyState(VK_T) & 0x8000) != 0
+                q_down = (user32.GetAsyncKeyState(VK_Q) & 0x8000) != 0
 
-                if ctrl_down and alt_down and key_down:
+                # Dispara se [Alt + Q] OU [Ctrl + Alt + T] forem pressionados
+                if (alt_down and q_down) or (ctrl_down and alt_down and t_down):
                     try:
                         self.callback()
                     except Exception as e:

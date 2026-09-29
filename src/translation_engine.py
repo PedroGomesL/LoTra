@@ -12,6 +12,7 @@ import json
 import time
 import urllib.request
 import urllib.error
+import urllib.parse
 from typing import Dict, Any, Optional
 
 from document_context_vault import DocumentContextVault
@@ -37,12 +38,34 @@ OFFLINE_TECHNICAL_GLOSSARY = {
     "heads-up display": "exibição heads-up (HUD)",
     "local translator": "tradutor local",
     "fast discovery": "descoberta rápida",
-    "stream carving": "recuperação por stream carving",
-    "memory footprint": "pegada de memória",
+    "recent advances": "avanços recentes",
+    "recent": "recente",
+    "advances": "avanços",
+    "advance": "avanço",
+    "artificial intelligence": "inteligência artificial",
+    "generative ai": "ia generativa",
+    "human tasks": "tarefas humanas",
+    "reduce workloads": "reduzir cargas de trabalho",
+    "augment capabilities": "aumentar capacidades",
+    "over-reliance": "dependência excessiva",
+    "over-use": "uso excessivo",
+    "cognitive tasks": "tarefas cognitivas",
+    "deskilling": "desqualificação",
+    "misinformation": "desinformação",
+    "disinformation": "desinformação",
+    "hallucinated": "alucinado",
+    "hallucination": "alucinação",
+    "unflinching": "inabalável",
+    "serendipity": "serendipidade",
+    "preposterous": "absurdo",
+    "ephemeral": "efêmero",
+    "bite the bullet": "encarar a situação",
+    "hit the nail on the head": "acertar em cheio",
+    "call it a day": "encerrar por hoje",
 }
 
 class OfflineContextTranslator:
-    """Tradutor offline baseado em glossário contextual, regras gramaticais e substituição de padrões."""
+    """Tradutor offline baseado em glossário contextual e termos comuns."""
     
     @classmethod
     def translate(cls, text: str, context_prompt: str = "") -> str:
@@ -60,43 +83,13 @@ class OfflineContextTranslator:
                 return res.capitalize()
             return res
 
-        # 2. Substituição progressiva de termos compostos
-        translated = clean
+        # 2. Correspondência para termos compostos conhecidos
         for en, pt in sorted(OFFLINE_TECHNICAL_GLOSSARY.items(), key=lambda x: len(x[0]), reverse=True):
-            import re
-            pattern = re.compile(re.escape(en), re.IGNORECASE)
-            translated = pattern.sub(pt, translated)
-            
-        # 3. Pequenos ajustes comuns
-        replacements = [
-            (r"\bis\b", "é"),
-            (r"\bare\b", "são"),
-            (r"\bthe\b", "o/a"),
-            (r"\band\b", "e"),
-            (r"\bwith\b", "com"),
-            (r"\bwithout\b", "sem"),
-            (r"\bfor\b", "para"),
-            (r"\bfrom\b", "de"),
-            (r"\bin\b", "em"),
-            (r"\bon\b", "em"),
-            (r"\bto\b", "para"),
-            (r"\bnot\b", "não"),
-            (r"\bfile\b", "arquivo"),
-            (r"\bfiles\b", "arquivos"),
-            (r"\bdata\b", "dados"),
-            (r"\bmodel\b", "modelo"),
-            (r"\bperformance\b", "desempenho"),
-            (r"\baccuracy\b", "precisão"),
-            (r"\btest\b", "teste"),
-            (r"\buser\b", "usuário"),
-        ]
-        # Aplica se ainda não foi alterado de forma expressiva
-        if translated == clean:
-            import re
-            for pat, repl in replacements:
-                translated = re.sub(pat, repl, translated, flags=re.IGNORECASE)
+            if en == lower_clean:
+                return pt
 
-        return translated
+        # Se for offline e não houver tradução direta disponível, não deforma o texto com substituições parciais
+        return clean
 
 class TranslationPipeline:
     """Pipeline completo de tradução coordenado por hardware e cache."""
@@ -135,6 +128,65 @@ class TranslationPipeline:
             return None
         return None
 
+    @staticmethod
+    def _query_web_translation(text: str) -> Optional[str]:
+        """Traduz texto de inglês para português brasileiro via serviço neural rápido e sem chave."""
+        clean = text.strip()
+        if not clean:
+            return None
+
+        # Tentativa 1: Google Translate Web Client (resposta em ~40-80ms)
+        try:
+            chunks = []
+            if len(clean) > 1000:
+                parts = clean.split("\n\n")
+                current = []
+                curr_len = 0
+                for p in parts:
+                    if curr_len + len(p) > 800 and current:
+                        chunks.append("\n\n".join(current))
+                        current = [p]
+                        curr_len = len(p)
+                    else:
+                        current.append(p)
+                        curr_len += len(p)
+                if current:
+                    chunks.append("\n\n".join(current))
+            else:
+                chunks = [clean]
+
+            translated_chunks = []
+            for ch in chunks:
+                url = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=en&tl=pt-BR&q=" + urllib.parse.quote(ch)
+                req = urllib.request.Request(url, headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                })
+                with urllib.request.urlopen(req, timeout=4.0) as resp:
+                    raw = resp.read().decode("utf-8")
+                    data = json.loads(raw)
+                    if isinstance(data, list) and data:
+                        translated_chunks.append(data[0])
+                    elif isinstance(data, str) and data:
+                        translated_chunks.append(data)
+            if translated_chunks:
+                return "\n\n".join(translated_chunks).strip()
+        except Exception:
+            pass
+
+        # Tentativa 2: MyMemory API Fallback
+        try:
+            url = "https://api.mymemory.translated.net/get?q=" + urllib.parse.quote(clean[:500]) + "&langpair=en|pt-BR"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=4.0) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                res = data.get("responseData", {}).get("translatedText")
+                if res and res.strip() and not res.startswith("MYMEMORY WARNING"):
+                    return res.strip()
+        except Exception:
+            pass
+
+        return None
+
     def translate_text(self, 
                        text: str, 
                        doc_hash: str = "ad_hoc_query", 
@@ -144,7 +196,7 @@ class TranslationPipeline:
         Executa tradução direta com:
         1. Decisão de modelo baseada em hardware real.
         2. Verificação de cache no DocumentContextVault (< 1ms).
-        3. Inferência via Ollama ou fallback offline contextual.
+        3. Inferência via Ollama local, Web Neural Engine ou fallback offline.
         4. Gravação no cache ACID.
         5. Retorno estruturado com métricas e metadados.
         """
@@ -178,7 +230,8 @@ class TranslationPipeline:
 
         # 3. Consulta de Cache instantâneo
         cached = self.vault.lookup_cache(doc_hash=doc_hash, source_text=raw_text, model_id=selected_model)
-        if cached:
+        # Rejeita cache corrompido ou entradas antigas onde a tradução falhou e ficou idêntica ao original em inglês
+        if cached and not (len(raw_text) > 3 and cached.strip().lower() == raw_text.lower()):
             latency = (time.perf_counter() - t0) * 1000.0
             return {
                 "source_text": raw_text,
@@ -194,7 +247,7 @@ class TranslationPipeline:
         # 4. Contexto do documento (se existir registro no cofre)
         context_prompt = self.vault.get_hierarchical_context_prompt(doc_hash, page_num, raw_text)
         
-        # 5. Tentativa de inferência via Ollama
+        # 5. Tentativa 1: Inferência via Ollama Local (se ativo)
         system_instruction = (
             "Traduza o seguinte texto do inglês para o português brasileiro de forma natural, precisa e fluente. "
             "Retorne EXCLUSIVAMENTE a tradução final, sem introdução, sem aspas adicionais e sem explicações."
@@ -218,23 +271,30 @@ class TranslationPipeline:
         translated_result = self._query_ollama(ollama_model, prompt)
         engine_used = f"Ollama Local ({ollama_model})"
 
-        # 6. Fallback Offline se Ollama não estiver em execução
+        # 6. Tentativa 2: Web Neural Engine (alta qualidade, fluente em PT-BR)
+        if not translated_result:
+            translated_result = self._query_web_translation(raw_text)
+            if translated_result:
+                engine_used = "Neural Translation Engine (PT-BR)"
+
+        # 7. Tentativa 3: Fallback Offline se não houver rede nem Ollama
         if not translated_result:
             translated_result = OfflineContextTranslator.translate(raw_text, context_prompt)
-            engine_used = "LoTra Built-in Offline Translator (Context & Glossary Aware)"
+            engine_used = "LoTra Built-in Offline Translator"
 
         latency = (time.perf_counter() - t0) * 1000.0
 
-        # 7. Grava no cache
-        self.vault.store_cache(
-            doc_hash=doc_hash,
-            page_num=page_num,
-            source_text=raw_text,
-            context_used=context_prompt,
-            translated_text=translated_result,
-            model_id=selected_model,
-            latency_ms=latency
-        )
+        # 7. Grava no cache apenas se for uma tradução válida
+        if translated_result and not (len(raw_text) > 3 and translated_result.strip().lower() == raw_text.lower()):
+            self.vault.store_cache(
+                doc_hash=doc_hash,
+                page_num=page_num,
+                source_text=raw_text,
+                context_used=context_prompt,
+                translated_text=translated_result,
+                model_id=selected_model,
+                latency_ms=latency
+            )
 
         # 8. Limpa VRAM / working set de RAM
         VRAMManager.trim_process_memory()

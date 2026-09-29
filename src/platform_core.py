@@ -20,7 +20,7 @@ import ctypes
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 
-APP_NAME = "FrankTranslator"
+APP_NAME = "LoTra"
 
 def get_app_data_dir() -> Path:
     """
@@ -44,9 +44,9 @@ def get_app_data_dir() -> Path:
     else: # Linux / Unix
         xdg_data = os.environ.get("XDG_DATA_HOME")
         if xdg_data:
-            app_dir = Path(xdg_data) / "frank_translator"
+            app_dir = Path(xdg_data) / "lotra"
         else:
-            app_dir = Path.home() / ".local" / "share" / "frank_translator"
+            app_dir = Path.home() / ".local" / "share" / "lotra"
 
     # Garante existência das subpastas isoladas
     (app_dir / "db").mkdir(parents=True, exist_ok=True)
