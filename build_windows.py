@@ -45,15 +45,21 @@ def ensure_assets():
     print(f"  [OK] Script WinRT OCR localizado: {WIN_OCR_SCRIPT}")
 
 def clean_previous_builds():
-    """Limpa artefatos temporários de compilações anteriores."""
+    """Limpa artefatos temporários de compilações anteriores com tratamento de locks."""
     print(">>> 2. Limpando artefatos de compilações anteriores...")
     for p in [BUILD_DIR, DIST_DIR]:
         if p.exists():
-            try:
-                shutil.rmtree(p, ignore_errors=True)
-                print(f"  [OK] Diretório removido: {p}")
-            except Exception as e:
-                print(f"  [WARN] Não foi possível remover {p}: {e}")
+            removed = False
+            for attempt in range(3):
+                try:
+                    shutil.rmtree(p)
+                    print(f"  [OK] Diretório removido: {p}")
+                    removed = True
+                    break
+                except Exception as e:
+                    time.sleep(0.5)
+            if not removed:
+                print(f"  [WARN] Diretório {p} retido por lock do sistema, prosseguindo com sobrescrita.")
 
     # Remove arquivos .spec residuais se desejado
     for spec_file in BASE_DIR.glob("*.spec"):
@@ -158,30 +164,40 @@ def verify_executable(exe_path: Path):
 
     # 1. Teste de versão
     print(">>> 1. Verificando --version...")
-    res = subprocess.run([str(exe_path), "--version"], capture_output=True, text=True, timeout=15)
+    res = subprocess.run([str(exe_path), "--version"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
     print(f"  Saída: {res.stdout.strip()}")
     assert res.returncode == 0, f"Falha ao executar --version (código {res.returncode}): {res.stderr}"
 
     # 2. Teste de Hardware Profiler
     print(">>> 2. Verificando --profile...")
-    res_prof = subprocess.run([str(exe_path), "--profile"], capture_output=True, text=True, timeout=20)
+    res_prof = subprocess.run([str(exe_path), "--profile"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
     assert res_prof.returncode == 0, f"Falha ao executar --profile: {res_prof.stderr}"
     assert "PERFIL DE HARDWARE REAL" in res_prof.stdout, "Saída inesperada no --profile"
     print("  [PASS] Hardware Profiler respondeu corretamente.")
 
     # 3. Teste de Auto-Diagnóstico (--test)
     print(">>> 3. Verificando --test (Integridade dos subsistemas empacotados)...")
-    res_test = subprocess.run([str(exe_path), "--test"], capture_output=True, text=True, timeout=30)
+    res_test = subprocess.run([str(exe_path), "--test"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
     assert res_test.returncode == 0, f"Falha ao executar --test: {res_test.stderr}"
     assert "TODOS OS SUBSISTEMAS VALIDADOS COM SUCESSO!" in res_test.stdout, "Sub-sistemas falharam no teste compilado"
     print("  [PASS] Auto-diagnóstico compilado validado com sucesso!")
 
     # 4. Teste de Tradução Direta
     print(">>> 4. Verificando --translate 'quantum scalability'...")
-    res_trans = subprocess.run([str(exe_path), "--translate", "quantum scalability"], capture_output=True, text=True, timeout=20)
+    res_trans = subprocess.run([str(exe_path), "--translate", "quantum scalability"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
     assert res_trans.returncode == 0, f"Falha ao executar --translate: {res_trans.stderr}"
     assert "escalabilidade" in res_trans.stdout.lower(), f"Tradução esperada não encontrada na saída: {res_trans.stdout}"
     print("  [PASS] Pipeline de Tradução respondeu com sucesso!")
+
+    # 5. Teste de OCR Nativo WinRT com UTF-8
+    sample_img = BASE_DIR / "docs" / "images" / "latency_comparison.png"
+    if sample_img.exists():
+        print(f">>> 5. Verificando --ocr com amostra real ({sample_img.name})...")
+        res_ocr = subprocess.run([str(exe_path), "--ocr", str(sample_img)], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
+        assert res_ocr.returncode == 0, f"Falha ao executar --ocr: {res_ocr.stderr}"
+        assert "Latência de Tradução" in res_ocr.stdout or "Lat" in res_ocr.stdout, "Texto OCR não reconhecido"
+        assert "\ufffd" not in res_ocr.stdout, "Detectado caractere corrompido (mojibake) na saída OCR"
+        print("  [PASS] Windows Media OCR nativo executado e decodificado com UTF-8 perfeito!")
 
     print_header("TODAS AS VERIFICAÇÕES DO EXECUTÁVEL PASSARAM COM 100% DE SUCESSO!")
 

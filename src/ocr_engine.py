@@ -13,6 +13,10 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from PIL import Image
 
+CURRENT_DIR = Path(__file__).resolve().parent
+if str(CURRENT_DIR) not in sys.path:
+    sys.path.insert(0, str(CURRENT_DIR))
+
 from resource_utils import get_resource_path
 from privacy_vault import EphemeralImageBuffer, secure_wipe_memory
 
@@ -77,6 +81,8 @@ class WindowsMediaOCREngine:
                 cmd,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 startupinfo=startupinfo,
                 creationflags=creationflags,
                 timeout=15.0

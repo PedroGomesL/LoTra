@@ -12,6 +12,7 @@ import sys
 import time
 import threading
 import ctypes
+import ctypes.wintypes
 from typing import Optional, Callable, Dict, Any
 
 # Win32 Constants
@@ -23,23 +24,69 @@ WM_HOTKEY = 0x0312
 VK_T = 0x54
 VK_ESCAPE = 0x1B
 
-def _setup_clipboard_prototypes():
+def enable_dpi_awareness():
+    """Habilita conscientização de DPI por monitor no Windows para evitar distorção e coordenadas erradas."""
+    if sys.platform != "win32":
+        return
+    try:
+        # DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 (-4)
+        ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+    except Exception:
+        try:
+            # PROCESS_PER_MONITOR_DPI_AWARE (2)
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        except Exception:
+            try:
+                ctypes.windll.user32.SetProcessDPIAware()
+            except Exception:
+                pass
+
+def _setup_win32_prototypes():
     if sys.platform != "win32":
         return
     k32 = ctypes.windll.kernel32
     u32 = ctypes.windll.user32
+
+    # Kernel32 Memory
     k32.GlobalAlloc.restype = ctypes.c_void_p
     k32.GlobalAlloc.argtypes = [ctypes.c_uint, ctypes.c_size_t]
     k32.GlobalLock.restype = ctypes.c_void_p
     k32.GlobalLock.argtypes = [ctypes.c_void_p]
+    k32.GlobalUnlock.restype = ctypes.c_bool
     k32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+    k32.GlobalFree.restype = ctypes.c_void_p
+    k32.GlobalFree.argtypes = [ctypes.c_void_p]
+
+    # User32 Clipboard
+    u32.OpenClipboard.restype = ctypes.c_bool
     u32.OpenClipboard.argtypes = [ctypes.c_void_p]
+    u32.CloseClipboard.restype = ctypes.c_bool
+    u32.CloseClipboard.argtypes = []
+    u32.EmptyClipboard.restype = ctypes.c_bool
+    u32.EmptyClipboard.argtypes = []
     u32.SetClipboardData.restype = ctypes.c_void_p
     u32.SetClipboardData.argtypes = [ctypes.c_uint, ctypes.c_void_p]
     u32.GetClipboardData.restype = ctypes.c_void_p
     u32.GetClipboardData.argtypes = [ctypes.c_uint]
 
-_setup_clipboard_prototypes()
+    # User32 Hotkeys & Cursor
+    u32.RegisterHotKey.restype = ctypes.c_bool
+    u32.RegisterHotKey.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_uint, ctypes.c_uint]
+    u32.UnregisterHotKey.restype = ctypes.c_bool
+    u32.UnregisterHotKey.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    u32.PeekMessageW.restype = ctypes.c_bool
+    u32.PeekMessageW.argtypes = [ctypes.POINTER(ctypes.wintypes.MSG), ctypes.c_void_p, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint]
+    u32.TranslateMessage.restype = ctypes.c_bool
+    u32.TranslateMessage.argtypes = [ctypes.POINTER(ctypes.wintypes.MSG)]
+    u32.DispatchMessageW.restype = ctypes.c_long
+    u32.DispatchMessageW.argtypes = [ctypes.POINTER(ctypes.wintypes.MSG)]
+    u32.GetAsyncKeyState.restype = ctypes.c_short
+    u32.GetAsyncKeyState.argtypes = [ctypes.c_int]
+    u32.GetCursorPos.restype = ctypes.c_bool
+    u32.GetCursorPos.argtypes = [ctypes.POINTER(ctypes.wintypes.POINT)]
+
+enable_dpi_awareness()
+_setup_win32_prototypes()
 
 def get_windows_clipboard_text() -> str:
     """Lê texto da área de transferência do Windows via Win32 API direta."""
@@ -274,9 +321,20 @@ class HUDTooltip:
         """Processa eventos pendentes da interface Tkinter se houver loop manual."""
         if self._root:
             try:
+                self._root.update_idletasks()
                 self._root.update()
             except Exception:
                 pass
+
+    def destroy(self):
+        """Descarta completamente a janela e o contexto do Tkinter."""
+        self.dismiss()
+        if self._root:
+            try:
+                self._root.destroy()
+            except Exception:
+                pass
+            self._root = None
 
 class HotkeyListener:
     """Escutador de tecla de atalho nativo para Windows (Win32 RegisterHotKey e GetAsyncKeyState)."""

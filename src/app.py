@@ -11,6 +11,8 @@ Integração completa:
 import os
 import sys
 import time
+import queue
+import threading
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -37,6 +39,8 @@ class LoTraApp:
         self.translator = TranslationPipeline(vault=self.vault)
         self.hud = HUDTooltip()
         self.hotkey_listener: Optional[HotkeyListener] = None
+        self._ui_queue: queue.Queue = queue.Queue()
+        self._is_serving: bool = False
 
     def profile_hardware(self) -> Dict[str, Any]:
         """Inspeciona o hardware da máquina em tempo real e retorna o perfil completo."""
@@ -99,19 +103,29 @@ class LoTraApp:
             return
 
         res = self.translate_text(clip_text)
-        translated = res["translated_text"]
-        source = res["source_text"]
-        latency = res["latency_ms"]
-        engine_name = res["engine_used"]
 
-        # Exibe overlay HUD
+        # Se chamado a partir de uma thread secundária (listener), envia para a fila da UI principal
+        # para que todas as operações com Tkinter ocorram exclusivamente na thread da UI.
+        if threading.current_thread() is not threading.main_thread():
+            self._ui_queue.put(res)
+            return
+
+        # Execução na thread principal (CLI direta ou testes)
         self.hud.show(
-            translated_text=translated,
-            source_text=source,
-            latency_ms=latency,
-            engine_name=engine_name,
+            translated_text=res["translated_text"],
+            source_text=res["source_text"],
+            latency_ms=res["latency_ms"],
+            engine_name=res["engine_used"],
             timeout_sec=8.0
         )
+
+    def stop_hud_service(self):
+        """Para o daemon HUD cooperativamente."""
+        self._is_serving = False
+        if self.hotkey_listener:
+            self.hotkey_listener.stop()
+        self.hud.destroy()
+        VRAMManager.trim_process_memory()
 
     def start_hud_service(self):
         """Inicia o daemon de segundo plano com escuta de atalho global."""
@@ -121,19 +135,31 @@ class LoTraApp:
         
         self.hotkey_listener = HotkeyListener(callback=self.trigger_quick_translation_from_clipboard)
         self.hotkey_listener.start()
+        self._is_serving = True
 
-        # Loop de eventos de UI para o Tkinter HUD
+        # Loop de eventos de UI para o Tkinter HUD na thread principal
         try:
-            while True:
+            while self._is_serving:
+                # Esvazia a fila de eventos vindos do HotkeyListener em segundo plano
+                while not self._ui_queue.empty():
+                    try:
+                        res = self._ui_queue.get_nowait()
+                        self.hud.show(
+                            translated_text=res["translated_text"],
+                            source_text=res["source_text"],
+                            latency_ms=res["latency_ms"],
+                            engine_name=res["engine_used"],
+                            timeout_sec=8.0
+                        )
+                    except queue.Empty:
+                        break
+
                 self.hud.pump_events()
-                time.sleep(0.05)
+                time.sleep(0.04)
         except KeyboardInterrupt:
             print("\n[LoTra] Encerrando serviço...")
         finally:
-            if self.hotkey_listener:
-                self.hotkey_listener.stop()
-            self.hud.dismiss()
-            VRAMManager.trim_process_memory()
+            self.stop_hud_service()
 
     def run_self_test(self) -> Dict[str, Any]:
         """Executa auto-diagnóstico completo de integridade de todos os subsistemas."""

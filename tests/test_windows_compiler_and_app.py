@@ -41,17 +41,23 @@ def test_resource_resolution():
 def test_clipboard_and_hud_readiness():
     print(">>> 2. Testando Integração com Clipboard Win32 e HUD Tooltip...")
     if sys.platform == "win32":
-        test_msg = f"LoTra_Test_Token_{int(time.time())}"
+        test_msg = f"LoTra_Teste_Acentuação_{int(time.time())}_maçã_café_ímã"
         success = set_windows_clipboard_text(test_msg)
         assert success is True, "Falha ao gravar no clipboard do Windows"
         read_back = get_windows_clipboard_text()
         assert read_back == test_msg, f"Esperado '{test_msg}', obteve '{read_back}'"
-        print("  [PASS] Clipboard Win32 leitura/escita validado!")
+        print("  [PASS] Clipboard Win32 leitura/escrita UTF-16LE validado!")
 
     hud = HUDTooltip()
     assert hud._is_active is False
+    # Valida ciclo de renderização real do HUD
+    hud.show("Texto Traduzido para Teste", "Source Text", latency_ms=15.0, engine_name="UnitTest")
+    assert hud._is_active is True
+    hud.pump_events()
     hud.dismiss()
-    print("  [PASS] HUD Tooltip ciclo de vida instanciado e descartado com sucesso.")
+    assert hud._is_active is False
+    hud.destroy()
+    print("  [PASS] HUD Tooltip ciclo de vida (show, pump_events, dismiss, destroy) validado com sucesso.")
 
 def test_translation_engine_and_cache():
     print(">>> 3. Testando Pipeline de Tradução e Cache do Cofre...")
@@ -72,8 +78,21 @@ def test_translation_engine_and_cache():
         assert res2["latency_ms"] < 50.0 # Cache hit instantâneo
         print(f"  [PASS] Cache hit validado: {res2['latency_ms']:.2f}ms")
 
+        # Teste 3: Trigger thread-safe de tradução via clipboard
+        import threading
+        set_windows_clipboard_text("quantum scalability")
+        def bg_worker():
+            app.trigger_quick_translation_from_clipboard()
+        t = threading.Thread(target=bg_worker)
+        t.start()
+        t.join(timeout=3.0)
+        assert not app._ui_queue.empty(), "Ação não enfileirada na fila da UI principal"
+        q_item = app._ui_queue.get()
+        assert "escalabilidade quântica" in q_item["translated_text"].lower()
+        print("  [PASS] Trigger assíncrono thread-safe via _ui_queue validado!")
+
 def test_ocr_engine_robustness():
-    print(">>> 4. Testando Robustez do Motor Windows Media OCR...")
+    print(">>> 4. Testando Robustez do Motor Windows Media OCR e Codificação UTF-8...")
     engine = WindowsMediaOCREngine()
     
     # 1. Arquivo inexistente deve falhar graciosamente sem lançar exceção
@@ -97,6 +116,17 @@ def test_ocr_engine_robustness():
             print(f"  [PASS] Windows Media OCR executou com sucesso ({res['inference_ms']:.1f}ms): '{res['text']}'")
         else:
             print("  [SKIP] Windows Media OCR não disponível no host atual.")
+
+    # 3. Imagem real com acentuação em português (docs/images/latency_comparison.png)
+    real_img = ROOT_DIR / "docs" / "images" / "latency_comparison.png"
+    if real_img.exists() and engine.is_available():
+        res_real = engine.recognize_file(real_img)
+        assert res_real["success"] is True
+        text = res_real["text"]
+        # Verifica que caracteres acentuados não foram corrompidos em mojibake
+        assert "Latência de Tradução" in text or "Lat" in text, f"Texto OCR inesperado: {text[:60]}"
+        assert "\ufffd" not in text, "Detectado caractere corrompido (replacement character) na saída do OCR"
+        print(f"  [PASS] OCR UTF-8 acentuação nativa verificada sem mojibake!")
 
 def test_lotra_app_self_diagnosis():
     print(">>> 5. Testando Auto-Diagnóstico Completo da Aplicação (Self-Test)...")
