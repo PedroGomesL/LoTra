@@ -177,7 +177,14 @@ def test_text_spacing_normalization_and_hud_font():
     assert "\n\n" in norm_two
     print("  [PASS] Preservação de múltiplos parágrafos reais validada!")
 
-    # 4. Verificação da fonte Times New Roman na janela HUD
+    # 4. Itens de lista compactos (sem espaçamento duplo \n\n)
+    list_text = "Key highlights:\n1. First item\n2. Second item\n3. Third item"
+    norm_list = normalize_text_spacing(list_text)
+    assert "1. First item\n2. Second item" in norm_list, f"Itens de lista devem ter quebra simples: {repr(norm_list)}"
+    assert "1. First item\n\n2. Second item" not in norm_list, f"Itens de lista não devem ter espaçamento duplo: {repr(norm_list)}"
+    print("  [PASS] Normalização compacta de listas sem espaçamento excessivo validada!")
+
+    # 5. Verificação da fonte Times New Roman na janela HUD
     hud = HUDTooltip()
     hud.show("Teste Tipografia", "Source", timeout_sec=0)
     labels = [w for w in hud._window.winfo_children()[0].winfo_children() if w.winfo_class() == "Label"]
@@ -187,7 +194,7 @@ def test_text_spacing_normalization_and_hud_font():
     hud.destroy()
     print("  [PASS] Fonte Times New Roman confirmada no HUD Tooltip!")
 
-    # 5. Disponibilidade da função de captura automática por simulação de cópia
+    # 6. Disponibilidade da função de captura automática por simulação de cópia
     assert callable(simulate_copy_selection)
     print("  [PASS] Simulação de cópia automática de seleção (Alt+Q sem Ctrl+C) verificada!")
 
@@ -205,12 +212,17 @@ def test_100_percent_local_translation():
     print("  [PASS] Zero conexões ou URLs com Google / APIs externas no código fonte!")
 
     # 3. Validação de tradução local dos termos do arXiv e IA
+    t0 = time.perf_counter()
     tr_ai = pipeline.translate_text("artificial intelligence")
+    latency_ms = (time.perf_counter() - t0) * 1000.0
     assert tr_ai["translated_text"].lower() == "inteligência artificial"
     assert tr_ai["engine_used"] != "Neural Translation Engine (PT-BR)"
+    # A resposta offline local deve ser ultrarrápida (sem travar segundos por Ollama offline)
+    assert latency_ms < 500.0, f"Latência offline excessiva: {latency_ms:.2f}ms"
     
-    tr_deskilling = pipeline.translate_text("human deskilling")
+    tr_deskilling = pipeline.translate_text("human deskilling and diminished cognitive engagement")
     assert "desqualificação" in tr_deskilling["translated_text"].lower()
+    assert "envolvimento cognitivo" in tr_deskilling["translated_text"].lower() or "engajamento" in tr_deskilling["translated_text"].lower()
     print("  [PASS] Tradução offline local de vocabulário acadêmico e técnico validada!")
 
 def test_two_hotkey_commands_configuration():

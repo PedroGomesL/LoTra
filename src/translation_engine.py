@@ -11,6 +11,7 @@ import sys
 import re
 import json
 import time
+import socket
 import urllib.request
 import urllib.error
 from typing import Dict, Any, Optional
@@ -22,6 +23,103 @@ from hud_tooltip import normalize_text_spacing
 
 # Dicionário offline de termos técnicos, computação quântica, IA, pesquisa acadêmica e expressões frequentes
 OFFLINE_TECHNICAL_GLOSSARY = {
+    # Amostras do arXiv e Abstract acadêmico
+    "as artificial intelligence (ai)": "à medida que a inteligência artificial (IA)",
+    "artificial intelligence (ai)": "inteligência artificial (IA)",
+    "artificial intelligence": "inteligência artificial",
+    "including generative ai": "incluindo IA generativa",
+    "generative ai": "ia generativa",
+    "generative": "generativa",
+    "continue to evolve": "continua a evoluir",
+    "concerns have arisen about": "surgiram preocupações sobre",
+    "concerns have arisen": "surgiram preocupações",
+    "over-reliance on ai": "dependência excessiva da IA",
+    "over-reliance": "dependência excessiva",
+    "over-use": "uso excessivo",
+    "which may lead to": "o que pode levar a",
+    "may lead to": "pode levar a",
+    "lead to": "levar a",
+    "human deskilling": "desqualificação humana",
+    "deskilling": "desqualificação",
+    "diminished cognitive engagement": "diminuição do envolvimento cognitivo",
+    "cognitive engagement": "envolvimento cognitivo",
+    "diminished": "diminuição",
+    "can also lead users to accept": "também pode levar os usuários a aceitar",
+    "can also lead users to": "também pode levar os usuários a",
+    "can also lead": "também pode levar",
+    "information given by ai": "informações fornecidas pela IA",
+    "without performing critical examinations": "sem realizar exames críticos",
+    "critical examinations": "exames críticos",
+    "critical examination": "exame crítico",
+    "without performing": "sem realizar",
+    "causing negative consequences": "causando consequências negativas",
+    "negative consequences": "consequências negativas",
+    "such as misleading users with hallucinated contents": "como enganar usuários com conteúdos alucinados",
+    "such as misleading users": "como enganar usuários",
+    "misleading users": "enganar usuários",
+    "hallucinated contents": "conteúdos alucinados",
+    "hallucinated content": "conteúdo alucinado",
+    "hallucinated": "alucinado",
+    "hallucination": "alucinação",
+    "this paper introduces": "este artigo apresenta",
+    "this paper presents": "este artigo apresenta",
+    "this paper proposes": "este artigo propõe",
+    "this paper": "este artigo",
+    "extraheric ai": "ia extra-hérica",
+    "extraheric": "extra-hérico",
+    "a human-ai interaction design framework": "uma estrutura de design de interação humano-ia",
+    "interaction design framework": "estrutura de design de interação",
+    "human-ai interaction designs": "designs de interação humano-ia",
+    "human-ai interaction design": "design de interação humano-ia",
+    "human-ai interaction": "interação humano-ia",
+    "interaction design": "design de interação",
+    "that fosters users' higher-order thinking skills": "que promove as habilidades de pensamento de ordem superior dos usuários",
+    "users' higher-order thinking skills": "habilidades de pensamento de ordem superior dos usuários",
+    "higher-order thinking skills": "habilidades de pensamento de ordem superior",
+    "higher-order thinking": "pensamento de ordem superior",
+    "thinking skills": "habilidades de pensamento",
+    "such as creativity, critical thinking, and problem-solving": "como criatividade, pensamento crítico e resolução de problemas",
+    "critical thinking": "pensamento crítico",
+    "problem-solving": "resolução de problemas",
+    "during task completion": "durante a conclusão da tarefa",
+    "task completion": "conclusão da tarefa",
+    "unlike existing human-ai interaction designs": "ao contrário dos designs existentes de interação humano-ia",
+    "unlike existing": "ao contrário dos existentes",
+    "which replace or augment human cognition": "que substituem ou aumentam a cognição humana",
+    "replace or augment": "substituem ou aumentam",
+    "human cognition": "cognição humana",
+    "fosters cognitive engagement": "promove o envolvimento cognitivo",
+    "by posing questions or providing alternative perspectives to users": "formulando perguntas ou fornecendo perspectivas alternativas aos usuários",
+    "by posing questions": "formulando perguntas",
+    "providing alternative perspectives to users": "fornecendo perspectivas alternativas aos usuários",
+    "providing alternative perspectives": "fornecendo perspectivas alternativas",
+    "alternative perspectives": "perspectivas alternativas",
+    "rather than direct answers": "em vez de respostas diretas",
+    "direct answers": "respostas diretas",
+    "rather than": "em vez de",
+    "we discuss interaction strategies": "discutimos estratégias de interação",
+    "we discuss": "discutimos",
+    "interaction strategies": "estratégias de interação",
+    "evaluation methods aligned with cognitive load theory": "métodos de avaliação alinhados com a teoria da carga cognitiva",
+    "aligned with cognitive load theory": "alinhados com a teoria da carga cognitiva",
+    "cognitive load theory": "teoria da carga cognitiva",
+    "bloom's taxonomy": "taxonomia de bloom",
+    "and future research directions": "e direções futuras de pesquisa",
+    "future research directions": "direções futuras de pesquisa",
+    "to ensure that human cognitive skills remain a crucial element": "para garantir que as habilidades cognitivas humanas permaneçam um elemento crucial",
+    "to ensure that": "para garantir que",
+    "human cognitive skills": "habilidades cognitivas humanas",
+    "cognitive skills": "habilidades cognitivas",
+    "remain a crucial element": "permaneçam um elemento crucial",
+    "crucial element": "elemento crucial",
+    "in ai-integrated environments": "em ambientes integrados à IA",
+    "ai-integrated environments": "ambientes integrados à IA",
+    "promoting a balanced partnership between humans and ai": "promovendo uma parceria equilibrada entre humanos e IA",
+    "promoting a balanced partnership": "promovendo uma parceria equilibrada",
+    "balanced partnership": "parceria equilibrada",
+    "between humans and ai": "entre humanos e IA",
+
+    # Termos de Hardware, Física Quântica e Benchmarks
     "hello world": "olá mundo",
     "quantum scalability": "escalabilidade quântica",
     "cryogenic attenuation stages": "estágios de atenuação criogênica",
@@ -43,41 +141,14 @@ OFFLINE_TECHNICAL_GLOSSARY = {
     "recent": "recente",
     "advances": "avanços",
     "advance": "avanço",
-    "artificial intelligence": "inteligência artificial",
-    "generative ai": "ia generativa",
-    "generative": "generativa",
     "human tasks": "tarefas humanas",
     "reduce workloads": "reduzir cargas de trabalho",
     "augment capabilities": "aumentar capacidades",
-    "over-reliance": "dependência excessiva",
-    "over-use": "uso excessivo",
     "cognitive tasks": "tarefas cognitivas",
-    "cognitive engagement": "envolvimento cognitivo",
-    "diminished cognitive engagement": "diminuição do envolvimento cognitivo",
-    "human deskilling": "desqualificação humana",
-    "deskilling": "desqualificação",
     "misinformation": "desinformação",
     "disinformation": "desinformação",
-    "hallucinated contents": "conteúdos alucinados",
-    "hallucinated content": "conteúdo alucinado",
-    "hallucinated": "alucinado",
-    "hallucination": "alucinação",
-    "human-ai interaction": "interação humano-ia",
-    "interaction design": "design de interação",
-    "higher-order thinking skills": "habilidades de pensamento de ordem superior",
-    "higher-order thinking": "pensamento de ordem superior",
-    "problem-solving": "resolução de problemas",
-    "critical examinations": "exames críticos",
-    "critical examination": "exame crítico",
-    "critical thinking": "pensamento crítico",
-    "cognitive load theory": "teoria da carga cognitiva",
-    "bloom's taxonomy": "taxonomia de bloom",
-    "human cognition": "cognição humana",
-    "interaction strategies": "estratégias de interação",
-    "evaluation methods": "métodos de avaliação",
-    "balanced partnership": "parceria equilibrada",
-    "alternative perspectives": "perspectivas alternativas",
     "creativity": "criatividade",
+    "evaluation methods": "métodos de avaliação",
     "unflinching": "inabalável",
     "serendipity": "serendipidade",
     "preposterous": "absurdo",
@@ -85,6 +156,57 @@ OFFLINE_TECHNICAL_GLOSSARY = {
     "bite the bullet": "encarar a situação",
     "hit the nail on the head": "acertar em cheio",
     "call it a day": "encerrar por hoje",
+
+    # Conectivos e expressões comuns da língua inglesa
+    "state of the art": "estado da arte",
+    "state-of-the-art": "estado da arte",
+    "ground truth": "verdade de referência",
+    "as well as": "bem como",
+    "in order to": "a fim de",
+    "on the other hand": "por outro lado",
+    "for example": "por exemplo",
+    "for instance": "por exemplo",
+    "in addition": "além disso",
+    "furthermore": "além disso",
+    "moreover": "além disso",
+    "therefore": "portanto",
+    "however": "no entanto",
+    "nevertheless": "não obstante",
+    "specifically": "especificamente",
+    "consequently": "consequentemente",
+    "such as": "como",
+    "instead of": "em vez de",
+    "due to": "devido a",
+    "based on": "com base em",
+    "in terms of": "em termos de",
+    "with respect to": "com relação a",
+    "and": "e",
+    "with": "com",
+    "without": "sem",
+    "for": "para",
+    "from": "de",
+    "about": "sobre",
+    "between": "entre",
+    "among": "entre",
+    "into": "em",
+    "through": "através de",
+    "also": "também",
+    "not": "não",
+    "only": "apenas",
+    "this": "este",
+    "that": "aquele",
+    "these": "estes",
+    "those": "aqueles",
+    "all": "todos",
+    "some": "alguns",
+    "more": "mais",
+    "most": "a maioria",
+    "other": "outro",
+    "new": "novo",
+    "high": "alto",
+    "low": "baixo",
+    "first": "primeiro",
+    "last": "último",
 }
 
 class OfflineContextTranslator:
@@ -141,9 +263,42 @@ class TranslationPipeline:
         self.vault = vault or DocumentContextVault()
         self.ollama_url = ollama_url
         self.orchestrator = AdaptiveEngineOrchestrator(target_latency_ms=250.0)
+        self._ollama_online: Optional[bool] = None
+        self._last_ollama_check: float = 0.0
+
+    def _is_ollama_available(self) -> bool:
+        """Verifica de forma ultrarrápida (< 35ms) se o servidor local do Ollama está ouvindo."""
+        now = time.perf_counter()
+        if self._ollama_online is not None and (now - self._last_ollama_check) < 25.0:
+            return self._ollama_online
+
+        self._last_ollama_check = now
+        try:
+            host = "127.0.0.1"
+            port = 11434
+            if "://" in self.ollama_url:
+                part = self.ollama_url.split("://", 1)[1]
+                if ":" in part:
+                    host, p_str = part.split(":", 1)
+                    port = int(p_str.split("/")[0])
+                else:
+                    host = part.split("/")[0]
+
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(0.035)
+            err = s.connect_ex((host, port))
+            s.close()
+            self._ollama_online = (err == 0)
+        except Exception:
+            self._ollama_online = False
+
+        return self._ollama_online
 
     def _query_ollama(self, model: str, prompt: str, timeout: float = 3.5) -> Optional[str]:
-        """Tenta comunicação local com Ollama."""
+        """Tenta comunicação local com Ollama se o servidor estiver ativo."""
+        if not self._is_ollama_available():
+            return None
+
         endpoint = f"{self.ollama_url}/api/generate"
         payload = json.dumps({
             "model": model,
@@ -166,8 +321,11 @@ class TranslationPipeline:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 if resp.status == 200:
                     data = json.loads(resp.read().decode("utf-8"))
-                    return data.get("response", "").strip()
+                    res = data.get("response", "").strip()
+                    if res:
+                        return res
         except Exception:
+            self._ollama_online = False
             return None
         return None
 

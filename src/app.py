@@ -129,7 +129,7 @@ class LoTraApp:
         Disparado via [Alt + Q]:
         1. Simula automaticamente a cópia (Ctrl+C) na janela ativa do Windows.
         2. Normaliza quebras de linha duras de PDF em fluxo de parágrafo contínuo.
-        3. Traduz via motor local e exibe o HUD tooltip.
+        3. Traduz via motor local e enfileira exibição no HUD tooltip.
         """
         clip_text = simulate_copy_selection()
         if not clip_text:

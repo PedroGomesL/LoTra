@@ -175,7 +175,7 @@ def normalize_text_spacing(text: str) -> str:
     - Converte quebras de linha duras de colunas de PDF em fluxo contínuo e fluído.
     - Desfaz hifenizações de final de linha (ex: 'over-\\nreliance' -> 'over-reliance', 'inter-\\noperability' -> 'interoperability').
     - Preserva parágrafos legítimos (linhas separadas por linha em branco onde a anterior termina com pontuação).
-    - Preserva itens de listas com marcadores e numerações.
+    - Preserva itens de listas (bullet points e números), separando-os de forma compacta com newline simples (\\n), sem espaçamentos verticais excessivos.
     - Remove espaços duplicados e evita espaçamentos verticais desnecessários no HUD.
     """
     if not text:
@@ -185,9 +185,9 @@ def normalize_text_spacing(text: str) -> str:
     if not t:
         return ""
 
-    # Desfaz hifenização de quebra de linha de PDFs
-    t = re.sub(r'(\b[a-zA-Z]+)-\n\s*([a-z][a-zA-Z]*)', r'\1\2', t)
-    t = re.sub(r'(\b[a-zA-Z]+)-\n\s*([A-Z][a-zA-Z]*)', r'\1-\2', t)
+    # Desfaz hifenização de quebra de linha de PDFs com suporte a caracteres latinos acentuados
+    t = re.sub(r'(\b[a-zA-ZÀ-ÿ]+)-\n\s*([a-zà-ÿ][a-zA-ZÀ-ÿ]*)', r'\1\2', t)
+    t = re.sub(r'(\b[a-zA-ZÀ-ÿ]+)-\n\s*([A-ZÀ-ß][a-zA-ZÀ-ÿ]*)', r'\1-\2', t)
 
     raw_lines = [line.strip() for line in t.split("\n")]
     sentence_end = ('.', '!', '?', ':', ';')
@@ -209,18 +209,36 @@ def normalize_text_spacing(text: str) -> str:
             if current_tokens:
                 paragraphs.append(" ".join(current_tokens).strip())
                 current_tokens = []
-            current_tokens.append(line)
+            paragraphs.append(line)
         else:
             current_tokens.append(line)
 
     if current_tokens:
         paragraphs.append(" ".join(current_tokens).strip())
 
-    result = "\n\n".join(p for p in paragraphs if p)
+    if not paragraphs:
+        return ""
+
+    # Une parágrafos: itens de listas usam quebra simples (\n) para evitar janelas enormes e vazias;
+    # blocos de parágrafos normais usam quebra dupla (\n\n).
+    out_chunks = []
+    for i, p in enumerate(paragraphs):
+        if not p:
+            continue
+        if i == 0:
+            out_chunks.append(p)
+        else:
+            prev = paragraphs[i - 1]
+            if list_marker.match(p) or list_marker.match(prev):
+                out_chunks.append("\n" + p)
+            else:
+                out_chunks.append("\n\n" + p)
+
+    result = "".join(out_chunks)
     result = re.sub(r'[ \t]+', ' ', result).strip()
     return result
 
-def simulate_copy_selection(timeout_sec: float = 0.25) -> str:
+def simulate_copy_selection(timeout_sec: float = 0.35) -> str:
     """
     Simula o comando de cópia (Ctrl+C) na janela ativa do Windows
     para capturar o texto selecionado pelo usuário sem que seja necessário
@@ -232,9 +250,13 @@ def simulate_copy_selection(timeout_sec: float = 0.25) -> str:
     user32 = ctypes.windll.user32
     seq_before = user32.GetClipboardSequenceNumber()
 
-    # 1. Garante que a tecla Alt esteja liberada para não interferir na combinação
+    # 1. Garante que as teclas modificadoras estejam liberadas para não interferir no envio do Ctrl+C
+    VK_LMENU = 0xA4
+    VK_RMENU = 0xA5
+    user32.keybd_event(VK_LMENU, 0, KEYEVENTF_KEYUP, 0)
+    user32.keybd_event(VK_RMENU, 0, KEYEVENTF_KEYUP, 0)
     user32.keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0)
-    time.sleep(0.03)
+    time.sleep(0.02)
 
     # 2. Emite o comando Ctrl+C
     user32.keybd_event(VK_CONTROL, 0, 0, 0)
@@ -242,7 +264,7 @@ def simulate_copy_selection(timeout_sec: float = 0.25) -> str:
     user32.keybd_event(VK_C, 0, 0, 0)
     time.sleep(0.02)
     user32.keybd_event(VK_C, 0, KEYEVENTF_KEYUP, 0)
-    time.sleep(0.01)
+    time.sleep(0.015)
     user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
 
     # 3. Aguarda a aplicação ativa atualizar o clipboard
@@ -305,6 +327,10 @@ class HUDTooltip:
         trans_display = normalize_text_spacing(translated_text)
         trans_display = re.sub(r'\n\s*\n+', '\n\n', trans_display.strip())
 
+        # Limites da tela
+        screen_w = window.winfo_screenwidth()
+        screen_h = window.winfo_screenheight()
+
         # Ajuste dinâmico de largura de quebra para garantir tipografia e proporções ideais
         char_len = len(trans_display)
         if char_len < 45 and "\n" not in trans_display:
@@ -315,6 +341,11 @@ class HUDTooltip:
             wrap_width = 540
         else:
             wrap_width = 620
+
+        # Não excede a largura utilizável do monitor
+        max_wrap = max(360, screen_w - 80)
+        if wrap_width > 0:
+            wrap_width = min(wrap_width, max_wrap)
 
         # Texto traduzido com fonte Times New Roman serifada, elegante e compacta
         trans_label = tk.Label(
@@ -361,14 +392,12 @@ class HUDTooltip:
         pos_x = cx + 15
         pos_y = cy + 18
 
-        # Limites da tela
-        screen_w = window.winfo_screenwidth()
-        screen_h = window.winfo_screenheight()
-
         if pos_x + win_w > screen_w - 20:
             pos_x = max(20, screen_w - win_w - 20)
         if pos_y + win_h > screen_h - 40:
             pos_y = max(20, cy - win_h - 10)
+        if pos_y < 20:
+            pos_y = 20
 
         window.geometry(f"+{pos_x}+{pos_y}")
 
@@ -440,17 +469,23 @@ class HotkeyListener:
         HOTKEY_ID_W = 102
         VK_Q = 0x51
         VK_W = 0x57
+        MOD_NOREPEAT = 0x4000
 
-        # Registra estritamente os 2 atalhos: Alt+Q e Alt+W
-        reg_q = user32.RegisterHotKey(0, HOTKEY_ID_Q, MOD_ALT, VK_Q)
-        reg_w = user32.RegisterHotKey(0, HOTKEY_ID_W, MOD_ALT, VK_W)
+        # Registra estritamente os 2 atalhos: Alt+Q e Alt+W (com MOD_NOREPEAT para evitar disparos repetidos por retenção da tecla)
+        reg_q = user32.RegisterHotKey(0, HOTKEY_ID_Q, MOD_ALT | MOD_NOREPEAT, VK_Q)
+        if not reg_q:
+            reg_q = user32.RegisterHotKey(0, HOTKEY_ID_Q, MOD_ALT, VK_Q)
+
+        reg_w = user32.RegisterHotKey(0, HOTKEY_ID_W, MOD_ALT | MOD_NOREPEAT, VK_W)
+        if not reg_w:
+            reg_w = user32.RegisterHotKey(0, HOTKEY_ID_W, MOD_ALT, VK_W)
 
         if reg_q or reg_w:
             msg = ctypes.wintypes.MSG()
             try:
                 while self.running:
-                    # PeekMessageW sem bloquear indefinidamente
-                    if user32.PeekMessageW(ctypes.byref(msg), 0, 0, 0, 1):  # PM_REMOVE
+                    # Drena mensagens pendentes sem bloquear indefinidamente
+                    while user32.PeekMessageW(ctypes.byref(msg), 0, 0, 0, 1):  # PM_REMOVE
                         if msg.message == WM_HOTKEY:
                             if msg.wParam == HOTKEY_ID_Q and self.callback:
                                 try:
@@ -464,7 +499,7 @@ class HotkeyListener:
                                     print(f"[HotkeyListener Alt+W Error] {e}")
                         user32.TranslateMessage(ctypes.byref(msg))
                         user32.DispatchMessageW(ctypes.byref(msg))
-                    time.sleep(0.04)
+                    time.sleep(0.03)
             finally:
                 if reg_q:
                     user32.UnregisterHotKey(0, HOTKEY_ID_Q)
