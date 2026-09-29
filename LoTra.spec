@@ -27,16 +27,17 @@ a = Analysis(
     binaries=[],
     datas=[
         (WIN_OCR_FILE, 'src'),
-        (ICON_FILE, 'assets')
+        (ICON_FILE, 'assets'),
+        (os.path.join(ASSETS_DIR, 'lotra.png'), 'assets')
     ],
     hiddenimports=[
         'sqlite3', 'ctypes', 'ctypes.wintypes', 'PIL', 'PIL.Image', 'PIL.ImageDraw',
-        'PIL.IcoImagePlugin', 'numpy', 'urllib.request', 'urllib.error', 'tkinter',
+        'PIL.IcoImagePlugin', 'PIL.ImageTk', 'numpy', 'urllib.request', 'urllib.error', 'tkinter',
         'tkinter.ttk', 'json', 'platform', 'subprocess', 'dataclasses', 'hashlib',
         'uuid', 'threading', 'queue', 'app', 'ocr_engine', 'translation_engine', 'hud_tooltip',
         'screen_snipper', 'resource_utils', 'platform_core', 'adaptive_engine_orchestrator',
         'document_context_vault', 'privacy_vault', 'incremental_scanner',
-        'pdf_resilience_manager'
+        'pdf_resilience_manager', 'ui_window'
     ],
     hookspath=[],
     hooksconfig={},

@@ -319,6 +319,9 @@ def normalize_text_spacing(text: str) -> str:
     t = re.sub(r'(\b[a-zA-ZÀ-ÿ]+)-\n\s*([a-zà-ÿ][a-zA-ZÀ-ÿ]*)', r'\1\2', t)
     t = re.sub(r'(\b[a-zA-ZÀ-ÿ]+)-\n\s*([A-ZÀ-ß][a-zA-ZÀ-ÿ]*)', r'\1-\2', t)
 
+    # Garante espaço após pontuação final colada em letra (ex: 'hello.World' -> 'hello. World')
+    t = re.sub(r'([.?!:;,])([a-zA-ZÀ-ÿ])', r'\1 \2', t)
+
     raw_lines = [line.strip() for line in t.split("\n")]
     sentence_end = ('.', '!', '?', ':', ';')
     list_marker = re.compile(r'^(\d+[\.\)]|[\u2022\u2023\u25E6\u2043\u2219\*\-\+])\s+')
@@ -330,7 +333,7 @@ def normalize_text_spacing(text: str) -> str:
         if not line:
             if current_tokens:
                 combined = " ".join(current_tokens).strip()
-                if combined and combined[-1] in sentence_end:
+                if combined:
                     paragraphs.append(combined)
                     current_tokens = []
             continue
@@ -431,12 +434,19 @@ def simulate_copy_selection(timeout_sec: float = 0.35) -> str:
     return get_windows_clipboard_text()
 
 class HUDTooltip:
-    """Gerenciador da janela flutuante overlay (HUD Tooltip) em Tkinter."""
+    """
+    Gerenciador da janela flutuante overlay (HUD Tooltip) em Tkinter:
+    - Tipografia em Times New Roman (conforme solicitado pelo usuário).
+    - Paleta cromática teal (#0f5c6e / #0b2329 / #f6f1e8) alinhada com a logo oficial do projeto.
+    - Fechamento confiável ao clicar fora da box em qualquer área da tela ou outro aplicativo.
+    - Sem auto-dismiss forçado por padrão (timeout_sec=0.0): permanece aberto até o usuário decidir fechar.
+    """
     
     def __init__(self):
         self._root = None
         self._window = None
         self._close_timer = None
+        self._outside_poll_job = None
         self._is_active = False
 
     def show(self, 
@@ -444,11 +454,10 @@ class HUDTooltip:
              source_text: str = "", 
              latency_ms: float = 0.0, 
              engine_name: str = "LoTra Engine",
-             timeout_sec: float = 7.0,
+             timeout_sec: float = 0.0,
              cursor_pos: Optional[tuple] = None):
-        """Exibe o HUD tooltip próximo ao cursor do mouse com layout moderno escuro."""
+        """Exibe o HUD tooltip próximo ao cursor do mouse com layout alinhado à identidade visual."""
         import tkinter as tk
-        from tkinter import ttk
 
         # Se já existir uma janela aberta, fecha antes de abrir a nova
         self.dismiss()
@@ -465,12 +474,12 @@ class HUDTooltip:
         # Janela de sobreposição (topmost e sem bordas do sistema)
         window.overrideredirect(True)
         window.attributes("-topmost", True)
-        window.attributes("-alpha", 0.96) # Leve translucidez moderna
+        window.attributes("-alpha", 0.97)
 
-        # Paleta de cores minimalista escura
-        bg_dark = "#181825"
-        border_color = "#313244"
-        text_primary = "#cdd6f4"
+        # Paleta de cores condizente com a nova logo da Lontra (Teal e Creme de Meio.dc.html)
+        bg_dark = "#0b2329"        # Fundo teal profundo
+        border_color = "#166a7d"   # Contorno suave teal
+        text_primary = "#f6f1e8"   # Texto creme da logo oficial
 
         # Frame único minimalista com borda sutil e preenchimento confortável
         main_frame = tk.Frame(window, bg=bg_dark, highlightbackground=border_color, highlightthickness=1, padx=14, pady=10)
@@ -538,16 +547,14 @@ class HUDTooltip:
         main_frame.bind("<Button-1>", on_click)
         trans_label.bind("<Button-1>", on_click)
 
-        # Fecha imediatamente com Esc ou ao clicar fora (perda de foco)
+        # Fecha com Esc no Tkinter
         window.bind("<Escape>", lambda e: self.dismiss())
-        window.bind("<FocusOut>", lambda e: self.dismiss())
 
         # Posicionamento inteligente próximo ao cursor ou centralizado
         window.update_idletasks()
         win_w = window.winfo_reqwidth()
         win_h = window.winfo_reqheight()
 
-        # Posiciona 15px abaixo e 15px à direita do ponteiro do mouse
         pos_x = cx + 15
         pos_y = cy + 18
 
@@ -569,9 +576,47 @@ class HUDTooltip:
 
         window.geometry(f"+{pos_x}+{pos_y}")
 
-        # Agendamento de auto-dismiss
+        # Agendamento de auto-dismiss apenas se explicitamente configurado > 0 (padrão é 0 = sem auto-dismiss)
         if timeout_sec > 0:
             self._close_timer = window.after(int(timeout_sec * 1000), self.dismiss)
+
+        # Inicia monitoramento de clique fora da box (garante fechamento ao clicar em qualquer outro app/desktop)
+        if sys.platform == "win32":
+            self._outside_poll_job = window.after(180, self._check_click_outside)
+
+    def _check_click_outside(self):
+        """Monitora periodicamente se o usuário clicou fora da janela do HUD para fechá-la imediatamente."""
+        if not self._is_active or not self._window:
+            return
+
+        if sys.platform == "win32":
+            user32 = ctypes.windll.user32
+            # VK_LBUTTON = 0x01, VK_RBUTTON = 0x02, VK_ESCAPE = 0x1B
+            lbutton_down = (user32.GetAsyncKeyState(0x01) & 0x8000) != 0
+            rbutton_down = (user32.GetAsyncKeyState(0x02) & 0x8000) != 0
+            esc_down = (user32.GetAsyncKeyState(0x1B) & 0x8000) != 0
+
+            if esc_down:
+                self.dismiss()
+                return
+
+            if lbutton_down or rbutton_down:
+                pt = ctypes.wintypes.POINT()
+                if user32.GetCursorPos(ctypes.byref(pt)):
+                    try:
+                        wx = self._window.winfo_rootx()
+                        wy = self._window.winfo_rooty()
+                        ww = self._window.winfo_width()
+                        wh = self._window.winfo_height()
+                        # Se o clique ocorreu fora do retângulo do HUD, descarta imediatamente
+                        if not (wx <= pt.x <= (wx + ww) and wy <= pt.y <= (wy + wh)):
+                            self.dismiss()
+                            return
+                    except Exception:
+                        pass
+
+        if self._is_active and self._window:
+            self._outside_poll_job = self._window.after(50, self._check_click_outside)
 
     def dismiss(self):
         """Fecha o tooltip atual com segurança."""
@@ -580,6 +625,10 @@ class HUDTooltip:
             try:
                 if self._close_timer:
                     self._window.after_cancel(self._close_timer)
+                    self._close_timer = None
+                if self._outside_poll_job:
+                    self._window.after_cancel(self._outside_poll_job)
+                    self._outside_poll_job = None
                 self._window.destroy()
             except Exception:
                 pass

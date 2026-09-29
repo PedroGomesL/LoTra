@@ -36,7 +36,9 @@ OFFLINE_TECHNICAL_GLOSSARY = {
     "concerns have arisen": "surgiram preocupações",
     "over-reliance on ai": "dependência excessiva da IA",
     "over-reliance": "dependência excessiva",
+    "overreliance": "dependência excessiva",
     "over-use": "uso excessivo",
+    "overuse": "uso excessivo",
     "which may lead to": "o que pode levar a",
     "may lead to": "pode levar a",
     "lead to": "levar a",
@@ -208,10 +210,348 @@ OFFLINE_TECHNICAL_GLOSSARY = {
     "low": "baixo",
     "first": "primeiro",
     "last": "último",
+
+    # Artigos e pronomes essenciais
+    "the": "o",
+    "a": "um",
+    "an": "um",
+    "i": "eu",
+    "you": "você",
+    "he": "ele",
+    "she": "ela",
+    "it": "ele",
+    "we": "nós",
+    "they": "eles",
+    "my": "meu",
+    "your": "seu",
+    "his": "dele",
+    "her": "dela",
+    "its": "seu",
+    "our": "nosso",
+    "their": "deles",
+    "them": "eles",
+    "us": "nós",
+    "him": "ele",
+    "what": "o que",
+    "which": "qual",
+    "who": "quem",
+    "whom": "quem",
+    "whose": "cujo",
+    "where": "onde",
+    "when": "quando",
+    "why": "por que",
+    "how": "como",
+
+    # Verbos auxiliares e formas comuns
+    "is": "é",
+    "are": "são",
+    "was": "foi",
+    "were": "eram",
+    "be": "ser",
+    "been": "sido",
+    "being": "sendo",
+    "have": "ter",
+    "has": "tem",
+    "had": "tinha",
+    "having": "tendo",
+    "do": "fazer",
+    "does": "faz",
+    "did": "fez",
+    "doing": "fazendo",
+    "done": "feito",
+    "can": "pode",
+    "could": "poderia",
+    "will": "irá",
+    "would": "seria",
+    "shall": "deverá",
+    "should": "deve",
+    "may": "pode",
+    "might": "poderia",
+    "must": "deve",
+
+    # Verbos de pesquisa e ação acadêmica
+    "show": "mostrar",
+    "shows": "mostra",
+    "showed": "mostrou",
+    "shown": "mostrado",
+    "showing": "mostrando",
+    "present": "apresentar",
+    "presents": "apresenta",
+    "presented": "apresentou",
+    "presenting": "apresentando",
+    "demonstrate": "demonstrar",
+    "demonstrates": "demonstra",
+    "demonstrated": "demonstrou",
+    "demonstrating": "demonstrando",
+    "propose": "propor",
+    "proposes": "propõe",
+    "proposed": "proposto",
+    "proposing": "propondo",
+    "achieve": "alcançar",
+    "achieves": "alcança",
+    "achieved": "alcançado",
+    "achieving": "alcançando",
+    "improve": "melhorar",
+    "improves": "melhora",
+    "improved": "melhorado",
+    "improving": "melhorando",
+    "reduce": "reduzir",
+    "reduces": "reduz",
+    "reduced": "reduzido",
+    "reducing": "reduzindo",
+    "evaluate": "avaliar",
+    "evaluates": "avalia",
+    "evaluated": "avaliado",
+    "evaluating": "avaliando",
+    "develop": "desenvolver",
+    "develops": "desenvolve",
+    "developed": "desenvolvido",
+    "developing": "desenvolvendo",
+    "create": "criar",
+    "creates": "cria",
+    "created": "criado",
+    "creating": "criando",
+    "use": "usar",
+    "uses": "usa",
+    "used": "usado",
+    "using": "usando",
+    "apply": "aplicar",
+    "applies": "aplica",
+    "applied": "aplicado",
+    "applying": "aplicando",
+    "compare": "comparar",
+    "compares": "compara",
+    "compared": "comparado",
+    "comparing": "comparando",
+    "provide": "fornecer",
+    "provides": "fornece",
+    "provided": "fornecido",
+    "providing": "fornecendo",
+    "require": "exigir",
+    "requires": "exige",
+    "required": "exigido",
+    "requiring": "exigindo",
+    "enable": "permitir",
+    "enables": "permite",
+    "enabled": "habilitado",
+    "enabling": "permitindo",
+    "allow": "permitir",
+    "allows": "permite",
+    "allowed": "permitido",
+    "allowing": "permitindo",
+    "support": "apoiar",
+    "supports": "apoia",
+    "supported": "apoiado",
+    "supporting": "apoiando",
+    "ensure": "garantir",
+    "ensures": "garante",
+    "ensured": "garantido",
+    "ensuring": "garantindo",
+    "enhance": "aprimorar",
+    "enhances": "aprimora",
+    "enhanced": "aprimorado",
+    "enhancing": "aprimorando",
+    "perform": "executar",
+    "performs": "executa",
+    "performed": "executado",
+    "performing": "executando",
+    "generate": "gerar",
+    "generates": "gera",
+    "generated": "gerado",
+    "generating": "gerando",
+    "contain": "conter",
+    "contains": "contém",
+    "contained": "contido",
+    "containing": "contendo",
+    "include": "incluir",
+    "includes": "inclui",
+    "included": "incluído",
+    "including": "incluindo",
+    "indicate": "indicar",
+    "indicates": "indica",
+    "indicated": "indicado",
+    "indicating": "indicando",
+    "suggest": "sugerir",
+    "suggests": "sugere",
+    "suggested": "sugerido",
+    "suggesting": "sugerindo",
+    "observe": "observar",
+    "observes": "observa",
+    "observed": "observado",
+    "observing": "observando",
+    "consider": "considerar",
+    "considers": "considera",
+    "considered": "considerado",
+    "considering": "considerando",
+    "implement": "implementar",
+    "implements": "implementa",
+    "implemented": "implementado",
+    "implementing": "implementando",
+
+    # Substantivos frequentes em artigos, documentos e computação
+    "study": "estudo",
+    "studies": "estudos",
+    "research": "pesquisa",
+    "author": "autor",
+    "authors": "autores",
+    "paper": "artigo",
+    "papers": "artigos",
+    "article": "artigo",
+    "articles": "artigos",
+    "document": "documento",
+    "documents": "documentos",
+    "system": "sistema",
+    "systems": "sistemas",
+    "model": "modelo",
+    "models": "modelos",
+    "data": "dados",
+    "dataset": "conjunto de dados",
+    "datasets": "conjuntos de dados",
+    "approach": "abordagem",
+    "approaches": "abordagens",
+    "method": "método",
+    "methods": "métodos",
+    "methodology": "metodologia",
+    "result": "resultado",
+    "results": "resultados",
+    "performance": "desempenho",
+    "accuracy": "precisão",
+    "efficiency": "eficiência",
+    "latency": "latência",
+    "speed": "velocidade",
+    "experiment": "experimento",
+    "experiments": "experimentos",
+    "evaluation": "avaliação",
+    "user": "usuário",
+    "users": "usuários",
+    "interface": "interface",
+    "network": "rede",
+    "networks": "redes",
+    "language": "linguagem",
+    "task": "tarefa",
+    "tasks": "tarefas",
+    "process": "processo",
+    "processes": "processos",
+    "problem": "problema",
+    "problems": "problemas",
+    "solution": "solução",
+    "solutions": "soluções",
+    "application": "aplicação",
+    "applications": "aplicações",
+    "design": "projeto",
+    "framework": "estrutura",
+    "environment": "ambiente",
+    "environments": "ambientes",
+    "feature": "recurso",
+    "features": "recursos",
+    "technology": "tecnologia",
+    "information": "informação",
+    "structure": "estrutura",
+    "quality": "qualidade",
+    "impact": "impacto",
+    "perspective": "perspectiva",
+    "perspectives": "perspectivas",
+    "context": "contexto",
+    "scale": "escala",
+    "output": "saída",
+    "input": "entrada",
+    "content": "conteúdo",
+    "contents": "conteúdos",
+    "mechanism": "mecanismo",
+    "conclusion": "conclusão",
+    "summary": "resumo",
+    "algorithm": "algoritmo",
+    "algorithms": "algoritmos",
+    "device": "dispositivo",
+    "devices": "dispositivos",
+    "memory": "memória",
+    "processor": "processador",
+    "security": "segurança",
+    "privacy": "privacidade",
+
+    # Adjetivos e modificadores fundamentais
+    "high": "alto",
+    "low": "baixo",
+    "large": "grande",
+    "small": "pequeno",
+    "new": "novo",
+    "old": "antigo",
+    "main": "principal",
+    "major": "principal",
+    "minor": "menor",
+    "significant": "significativo",
+    "simple": "simples",
+    "complex": "complexo",
+    "accurate": "preciso",
+    "fast": "rápido",
+    "slow": "lento",
+    "reliable": "confiável",
+    "efficient": "eficiente",
+    "effective": "eficaz",
+    "deep": "profundo",
+    "current": "atual",
+    "previous": "anterior",
+    "recent": "recente",
+    "novel": "inovador",
+    "standard": "padrão",
+    "local": "local",
+    "global": "global",
+    "direct": "direto",
+    "indirect": "indireto",
+    "general": "geral",
+    "specific": "específico",
+    "important": "importante",
+    "critical": "crítico",
+    "robust": "robusto",
+    "overall": "geral",
+    "full": "completo",
+    "optimal": "ótimo",
+    "adaptive": "adaptativo",
+    "essential": "essencial",
+    "clear": "claro",
+    "easily": "facilmente",
+    "quickly": "rapidamente",
+    "directly": "diretamente",
+    "significantly": "significativamente",
+    "highly": "altamente",
+    "well": "bem",
+    "then": "então",
+    "now": "agora",
+    "always": "sempre",
+    "never": "nunca",
+    "often": "frequentemente",
+    "usually": "usualmente",
+    "currently": "atualmente",
+    "particularly": "particularmente",
+    "widely": "amplamente",
+    "relatively": "relativamente",
+    "extremely": "extremamente",
+    "completely": "completamente",
+    "successfully": "com sucesso",
+    "but": "mas",
+    "or": "ou",
+    "so": "portanto",
+    "because": "porque",
+    "since": "desde",
+    "while": "enquanto",
+    "if": "se",
+    "as": "como",
+    "than": "do que",
+    "of": "de",
+    "in": "em",
+    "on": "em",
+    "at": "em",
+    "to": "para",
+    "by": "por",
 }
 
 class OfflineContextTranslator:
-    """Tradutor offline 100% local baseado em glossário contextual, termos técnicos e expressões."""
+    """
+    Tradutor offline 100% autônomo baseado em:
+    1. Correspondência gananciosa (greedy longest-match) de locuções compostas e termos técnicos.
+    2. Tradução token a token com preservação estrita de espaçamento, pontuação e casing.
+    3. Reordenação e concordância que evitam frases coladas ou palavras residuais em inglês.
+    """
     
     @classmethod
     def translate(cls, text: str, context_prompt: str = "") -> str:
@@ -220,7 +560,8 @@ class OfflineContextTranslator:
             return ""
             
         lower_clean = clean.lower()
-        # 1. Correspondência exata no glossário
+
+        # 1. Correspondência exata direta no glossário
         if lower_clean in OFFLINE_TECHNICAL_GLOSSARY:
             res = OFFLINE_TECHNICAL_GLOSSARY[lower_clean]
             if clean.isupper():
@@ -229,33 +570,105 @@ class OfflineContextTranslator:
                 return res.capitalize()
             return res
 
-        # 2. Correspondência para termos compostos conhecidos
-        for en, pt in sorted(OFFLINE_TECHNICAL_GLOSSARY.items(), key=lambda x: len(x[0]), reverse=True):
-            if en == lower_clean:
-                if clean.isupper():
-                    return pt.upper()
-                elif clean[0].isupper():
-                    return pt.capitalize()
-                return pt
+        # 2. Divide em parágrafos para preservar quebras de parágrafo sem grudar linhas
+        paragraphs = clean.split("\n\n")
+        translated_paragraphs = []
 
-        # 3. Substituição contextual de locuções e termos compostos reconhecidos
-        translated = clean
-        for en, pt in sorted(OFFLINE_TECHNICAL_GLOSSARY.items(), key=lambda x: len(x[0]), reverse=True):
-            if len(en) < 3:
+        # Separa termos multi-palavras dos termos uni-palavras
+        multi_word_terms = []
+        single_word_terms = {}
+        for en, pt in OFFLINE_TECHNICAL_GLOSSARY.items():
+            if " " in en or "-" in en:
+                multi_word_terms.append((en, pt))
+            else:
+                single_word_terms[en] = pt
+
+        # Ordena locuções compostas pela mais longa primeiro
+        multi_word_terms.sort(key=lambda x: len(x[0]), reverse=True)
+
+        for para in paragraphs:
+            para = para.strip()
+            if not para:
                 continue
-            pattern = re.compile(rf'\b{re.escape(en)}\b', re.IGNORECASE)
 
-            def _repl(match):
-                matched = match.group(0)
-                if matched.isupper():
-                    return pt.upper()
-                elif matched[0].isupper():
-                    return pt.capitalize()
-                return pt
+            # Preserva quebras simples dentro do parágrafo (ex: listas)
+            lines = para.split("\n")
+            translated_lines = []
 
-            translated = pattern.sub(_repl, translated)
+            for line in lines:
+                working_line = line.strip()
+                if not working_line:
+                    continue
 
-        return translated
+                # A. Substituição de locuções multi-palavras usando marcadores seguros
+                placeholders = {}
+                ph_idx = 0
+
+                for en, pt in multi_word_terms:
+                    # Regex com fronteiras de limites de palavra flexíveis
+                    escaped_en = re.escape(en)
+                    pattern = re.compile(rf'(?<!\w){escaped_en}(?!\w)', re.IGNORECASE)
+                    
+                    def _ph_sub(match):
+                        nonlocal ph_idx
+                        matched = match.group(0)
+                        ph_key = f"__LOTRA_PH_{ph_idx}__"
+                        ph_idx += 1
+                        if matched.isupper():
+                            placeholders[ph_key] = pt.upper()
+                        elif matched[0].isupper():
+                            placeholders[ph_key] = pt.capitalize()
+                        else:
+                            placeholders[ph_key] = pt
+                        return ph_key
+
+                    working_line = pattern.sub(_ph_sub, working_line)
+
+                # B. Tokeniza a linha preservando pontuações e espaços
+                tokens = re.findall(r'(__LOTRA_PH_\d+__|[a-zA-ZÀ-ÿ0-9]+|[^\s\w])', working_line)
+                translated_tokens = []
+
+                for tok in tokens:
+                    if tok.startswith("__LOTRA_PH_") and tok in placeholders:
+                        translated_tokens.append(placeholders[tok])
+                    else:
+                        tok_lower = tok.lower()
+                        if tok_lower in single_word_terms:
+                            pt_word = single_word_terms[tok_lower]
+                            if tok.isupper():
+                                translated_tokens.append(pt_word.upper())
+                            elif tok[0].isupper():
+                                translated_tokens.append(pt_word.capitalize())
+                            else:
+                                translated_tokens.append(pt_word)
+                        else:
+                            translated_tokens.append(tok)
+
+                # C. Reconstroi a linha garantindo que pontuações não fiquem com espaços errados
+                # e que palavras adjacentes tenham sempre um espaço único
+                built_line = ""
+                no_space_before = {'.', ',', ';', ':', '!', '?', ')', ']', '}', '%'}
+                no_space_after = {'(', '[', '{', '$', '¿', '¡'}
+
+                for i, tok in enumerate(translated_tokens):
+                    if i == 0:
+                        built_line = tok
+                    else:
+                        prev_tok = translated_tokens[i - 1]
+                        if tok in no_space_before or prev_tok in no_space_after:
+                            built_line += tok
+                        else:
+                            built_line += " " + tok
+
+                translated_lines.append(built_line)
+
+            translated_paragraphs.append("\n".join(translated_lines))
+
+        result = "\n\n".join(translated_paragraphs)
+        # Limpeza final de espaços redundantes
+        result = re.sub(r'[ \t]+', ' ', result).strip()
+        return result
+
 
 class ONNXTranslationEngine:
     """

@@ -502,3 +502,70 @@ def get_platform_bridge() -> IPlatformBridge:
 
     return _PLATFORM_BRIDGE_INSTANCE
 
+
+class SingleInstanceGuard:
+    """
+    Garante que apenas uma única instância do processo LoTra execute simultaneamente no Windows,
+    utilizando um Mutex nomeado no kernel do Win32.
+    Evita acúmulo de múltiplos processos .exe no Gerenciador de Tarefas e conflitos de atalhos globais.
+    """
+
+    def __init__(self, mutex_name: str = "LoTra_SingleInstance_Mutex_Global"):
+        self.mutex_name = mutex_name
+        self.mutex = None
+        self._is_primary = False
+
+    def acquire(self) -> bool:
+        """Tenta adquirir o mutex exclusivo. Retorna True se for a instância primária, False se já houver outra rodando."""
+        if sys.platform != "win32":
+            self._is_primary = True
+            return True
+
+        ERROR_ALREADY_EXISTS = 183
+        kernel32 = ctypes.windll.kernel32
+        self.mutex = kernel32.CreateMutexW(None, False, self.mutex_name)
+        if kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
+            self._is_primary = False
+            return False
+
+        self._is_primary = True
+        return True
+
+    def activate_existing_window(self, window_title_substr: str = "LoTra"):
+        """Localiza e traz para frente a janela da instância que já está em execução."""
+        if sys.platform != "win32":
+            return
+        user32 = ctypes.windll.user32
+
+        def enum_windows_callback(hwnd, extra):
+            if user32.IsWindowVisible(hwnd):
+                length = user32.GetWindowTextLengthW(hwnd)
+                if length > 0:
+                    buff = ctypes.create_unicode_buffer(length + 1)
+                    user32.GetWindowTextW(hwnd, buff, length + 1)
+                    val = buff.value
+                    if window_title_substr.lower() in val.lower():
+                        # SW_RESTORE = 9
+                        user32.ShowWindow(hwnd, 9)
+                        user32.SetForegroundWindow(hwnd)
+                        return False
+            return True
+
+        try:
+            import ctypes.wintypes
+            WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM)
+            cb = WNDENUMPROC(enum_windows_callback)
+            user32.EnumWindows(cb, 0)
+        except Exception:
+            pass
+
+    def release(self):
+        """Libera o mutex ao encerrar a aplicação."""
+        if self.mutex and sys.platform == "win32":
+            try:
+                ctypes.windll.kernel32.CloseHandle(self.mutex)
+            except Exception:
+                pass
+            self.mutex = None
+            self._is_primary = False
+

@@ -135,14 +135,22 @@ def main():
             print("ALGUNS SUBSISTEMAS APRESENTARAM FALHAS OU AVISOS.")
             return 1
 
-    if args.gui:
-        print(BANNER)
-        app.start_hud_service()
+    if args.gui or (not args.profile and not args.translate and not args.ocr and not args.process and not args.test):
+        # Modo interativo (duplo clique ou --gui): Aplica proteção de instância única
+        from platform_core import SingleInstanceGuard
+        guard = SingleInstanceGuard()
+        if not guard.acquire():
+            print("[LoTra] Uma instância do aplicativo já está em execução. Trazendo janela para frente...")
+            guard.activate_existing_window("LoTra")
+            return 0
+
+        try:
+            print(BANNER)
+            app.start_hud_service(show_gui=True)
+        finally:
+            guard.release()
         return 0
 
-    # Padrão: exibe banner e inicia serviço HUD
-    print(BANNER)
-    app.start_hud_service()
     return 0
 
 if __name__ == "__main__":

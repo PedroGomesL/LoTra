@@ -1,0 +1,203 @@
+"""
+Bateria de Testes Unitários dos 10 Bugs e Melhorias da Interface Gráfica do LoTra:
+1. Bug 1: Espaçamento de tradução, normalização de PDFs e prevenção de frases coladas.
+2. Bug 2: Vocabulário offline abrangente e erradicação de palavras residuais em inglês.
+3. Bug 3: Fechamento automático ao clicar fora da box (dismiss outside box).
+4. Bug 4: Auto-dismiss desligado por padrão (permanece na tela sem fechar após poucos segundos).
+5. Bug 5: Inicialização com UI visível na área de trabalho em vez de processo oculto.
+6. Bug 6: Single-Instance Mutex (bloqueio rigoroso de múltiplos processos LoTra.exe acumulados).
+7. Bug 7: Interface gráfica interativa (substituição do terminal por GUI moderna).
+8. Bug 8: Ícone e logo gerados a partir do Meio.dc.html com múltiplas resoluções.
+9. Bug 9: Consistência cromática com a nova logo (paleta teal #0f5c6e e creme #f6f1e8).
+10. Bug 10: Execução automatizada e validação de cobertura dos testes.
+"""
+
+import os
+import sys
+import time
+import unittest
+from pathlib import Path
+from PIL import Image
+
+# Adiciona diretórios ao path
+BASE_DIR = Path(__file__).resolve().parent.parent
+SRC_DIR = BASE_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+from platform_core import SingleInstanceGuard, get_app_data_dir
+from hud_tooltip import normalize_text_spacing, HUDTooltip
+from translation_engine import OfflineContextTranslator, TranslationPipeline
+from document_context_vault import DocumentContextVault
+from resource_utils import get_resource_path
+from ui_window import LoTraMainWindow
+
+class TestLoTraBugsAndUI(unittest.TestCase):
+    """Testes unitários dedicados aos 10 pontos auditados."""
+
+    @classmethod
+    def setUpClass(cls):
+        import tempfile
+        cls.temp_dir = tempfile.TemporaryDirectory()
+        cls.db_path = Path(cls.temp_dir.name) / "test_vault.db"
+        cls.vault = DocumentContextVault(db_path=str(cls.db_path))
+        cls.pipeline = TranslationPipeline(vault=cls.vault)
+
+    @classmethod
+    def tearDownClass(cls):
+        if hasattr(cls, 'vault'):
+            cls.vault.shutdown()
+        if hasattr(cls, 'temp_dir'):
+            cls.temp_dir.cleanup()
+
+    def test_bug1_text_spacing_and_glued_phrases(self):
+        """Valida que quebras de linha de PDFs e pontuações coladas são normalizadas sem colar palavras."""
+        # 1. Pontuação colada em letra (ex: erro comum de OCR/clipboard: "sentence.Next")
+        raw_glued = "This is the first sentence.Second sentence follows immediately:another clause."
+        norm = normalize_text_spacing(raw_glued)
+        self.assertIn("sentence. Second", norm)
+        self.assertIn("immediately: another", norm)
+
+        # 2. Hifenização de fim de linha de coluna de PDF
+        pdf_hyphen = "Recent advances in inter-\noperability and over-\nreliance are notable."
+        norm_pdf = normalize_text_spacing(pdf_hyphen)
+        self.assertIn("interoperability", norm_pdf)
+        self.assertIn("overreliance", norm_pdf)
+        self.assertNotIn("inter-\n", norm_pdf)
+
+        # 3. Quebras duras de linha concatenadas em fluxo contínuo
+        multi_line = "First line of thought\ncontinues smoothly on the second line."
+        norm_flow = normalize_text_spacing(multi_line)
+        self.assertEqual(norm_flow, "First line of thought continues smoothly on the second line.")
+
+    def test_bug2_no_untranslated_english_words(self):
+        """Valida que o tradutor offline traduz palavras comuns, verbos e termos sem deixar vocabulário em inglês."""
+        test_phrases = [
+            ("The study shows that the system achieves high accuracy.", ["study", "shows", "system", "achieves", "accuracy"]),
+            ("We evaluated a new approach to reduce latency.", ["evaluated", "approach", "reduce", "latency"]),
+            ("The author proposed a simple solution for the user.", ["author", "proposed", "solution", "user"])
+        ]
+
+        for text, english_keywords in test_phrases:
+            translated = OfflineContextTranslator.translate(text)
+            self.assertTrue(len(translated) > 0)
+            # Verifica que as palavras-chave em inglês foram substituídas para português
+            for kw in english_keywords:
+                self.assertNotIn(f" {kw} ", f" {translated.lower()} ", 
+                                 f"Palavra em inglês '{kw}' não foi traduzida na frase: '{translated}'")
+
+    def test_bug3_click_outside_box_dismiss_mechanism(self):
+        """Valida que o HUDTooltip possui mecanismo de fechamento ao clicar fora da janela."""
+        hud = HUDTooltip()
+        hud.show("Texto de teste para validação de clique fora", timeout_sec=0.0)
+        self.assertTrue(hud._is_active)
+        self.assertIsNotNone(hud._window)
+        self.assertIsNotNone(hud._outside_poll_job)
+
+        # Invoca dismiss e valida limpeza imediata
+        hud.dismiss()
+        self.assertFalse(hud._is_active)
+        self.assertIsNone(hud._window)
+        self.assertIsNone(hud._outside_poll_job)
+        hud.destroy()
+
+    def test_bug4_no_auto_dismiss_timeout_zero(self):
+        """Valida que por padrão timeout_sec é 0.0 (sem fechamento forçado após alguns segundos)."""
+        hud = HUDTooltip()
+        hud.show("Texto persistente enquanto o usuário lê", timeout_sec=0.0)
+        # Quando timeout_sec é 0.0, _close_timer não deve ser agendado
+        self.assertIsNone(hud._close_timer, "Auto-dismiss timer não deve ser agendado quando timeout_sec=0.0")
+        hud.dismiss()
+        hud.destroy()
+
+    def test_bug5_and_bug7_ui_window_initialization(self):
+        """Valida construção e integridade da janela gráfica Tkinter principal que substitui o terminal."""
+        class MockApp:
+            def __init__(self):
+                self._ui_queue = None
+                self._is_serving = True
+            def profile_hardware(self):
+                return {
+                    "cpu_cores": 8,
+                    "avail_ram_gb": 12.0,
+                    "gpu_name": "Radeon Graphics",
+                    "recommended_tier": "small"
+                }
+            def translate_text(self, txt):
+                return {
+                    "source_text": txt,
+                    "translated_text": "Texto traduzido com sucesso.",
+                    "latency_ms": 15.2,
+                    "engine_used": "LoTra Test Engine"
+                }
+            def stop_hud_service(self):
+                pass
+
+        mock_app = MockApp()
+        main_win = LoTraMainWindow(app=mock_app)
+        self.assertIsNotNone(main_win.root)
+        self.assertEqual(main_win.root.title(), "LoTra - Tradução e Leitura Fluida")
+
+        # Testa tradução interativa dentro da UI
+        main_win.txt_input.delete("1.0", "end")
+        main_win.txt_input.insert("1.0", "Hello world")
+        main_win._do_manual_translate()
+
+        res_out = main_win.txt_output.get("1.0", "end").strip()
+        self.assertEqual(res_out, "Texto traduzido com sucesso.")
+        self.assertIn("15.2ms", main_win.lbl_stats.cget("text"))
+
+        main_win.root.destroy()
+
+    def test_bug6_single_instance_mutex_guard(self):
+        """Valida que SingleInstanceGuard impede a criação de múltiplos processos LoTra.exe em paralelo."""
+        test_mutex_name = f"LoTra_UnitTest_Mutex_{os.getpid()}_{int(time.time())}"
+        guard1 = SingleInstanceGuard(mutex_name=test_mutex_name)
+        guard2 = SingleInstanceGuard(mutex_name=test_mutex_name)
+
+        try:
+            # Primeira instância adquire o mutex com sucesso
+            acquired_1 = guard1.acquire()
+            self.assertTrue(acquired_1, "A primeira instância deve adquirir o mutex primário.")
+
+            if sys.platform == "win32":
+                # Segunda instância tenta adquirir o mesmo mutex nomeado e deve ser rejeitada
+                acquired_2 = guard2.acquire()
+                self.assertFalse(acquired_2, "A segunda instância deve ser rejeitada para evitar múltiplos processos.")
+        finally:
+            guard1.release()
+            guard2.release()
+
+    def test_bug8_and_bug9_icon_and_logo_consistency(self):
+        """Valida o ícone da Lontra, resoluções e conformidade cromática com Meio.dc.html (#0f5c6e)."""
+        ico_path = get_resource_path("assets/lotra.ico")
+        png_path = get_resource_path("assets/lotra.png")
+
+        self.assertTrue(ico_path.exists(), f"Arquivo de ícone {ico_path} deve existir.")
+        self.assertTrue(png_path.exists(), f"Arquivo de logo PNG {png_path} deve existir.")
+
+        # Inspeciona dimensões do PNG oficial
+        with Image.open(png_path) as img:
+            self.assertEqual(img.size, (512, 512))
+            # Converte para RGB para amostrar a cor predominante do balão de fala
+            rgb_img = img.convert("RGBA")
+            # Amostra um pixel dentro do balão teal (ex: x=100, y=100 em viewBox)
+            # Escala 512/120: pixel (250, 100) está certamente dentro do balão
+            r, g, b, a = rgb_img.getpixel((250, 80))
+            # Cor teal esperada: #0f5c6e -> R=15 (0x0F), G=92 (0x5C), B=110 (0x6E)
+            self.assertTrue(a > 200, "Pixel amostrado deve ser opaco.")
+            self.assertAlmostEqual(r, 15, delta=18, msg="Componente R deve coincidir com #0f5c6e")
+            self.assertAlmostEqual(g, 92, delta=18, msg="Componente G deve coincidir com #0f5c6e")
+            self.assertAlmostEqual(b, 110, delta=18, msg="Componente B deve coincidir com #0f5c6e")
+
+def run_tests():
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestLoTraBugsAndUI)
+    runner = unittest.TextTestRunner(verbosity=2)
+    res = runner.run(suite)
+    return res.wasSuccessful()
+
+if __name__ == "__main__":
+    success = run_tests()
+    sys.exit(0 if success else 1)

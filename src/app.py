@@ -37,6 +37,7 @@ from hud_tooltip import (
 )
 from screen_snipper import NativeScreenSnipper
 from resource_utils import get_resource_path
+from ui_window import LoTraMainWindow
 
 class LoTraApp:
     """Instância central do assistente LoTra."""
@@ -51,6 +52,7 @@ class LoTraApp:
         self.hotkey_listener: Optional[HotkeyListener] = None
         self._ui_queue: queue.Queue = queue.Queue()
         self._is_serving: bool = False
+        self.main_window: Optional[LoTraMainWindow] = None
 
     def profile_hardware(self) -> Dict[str, Any]:
         """Inspeciona o hardware da máquina em tempo real e retorna o perfil completo."""
@@ -123,7 +125,7 @@ class LoTraApp:
             source_text=res["source_text"],
             latency_ms=res["latency_ms"],
             engine_name=res["engine_used"],
-            timeout_sec=8.0
+            timeout_sec=0.0
         )
 
     def _display_hud_notice(self, notice_text: str):
@@ -133,7 +135,7 @@ class LoTraApp:
             "source_text": "",
             "latency_ms": 0.0,
             "engine_used": "LoTra Security Shield (UIPI)",
-            "timeout_sec": 7.0
+            "timeout_sec": 0.0
         }
         if threading.current_thread() is not threading.main_thread():
             self._ui_queue.put(payload)
@@ -144,7 +146,7 @@ class LoTraApp:
             source_text="",
             latency_ms=0.0,
             engine_name="LoTra Security Shield (UIPI)",
-            timeout_sec=7.0
+            timeout_sec=0.0
         )
 
     def trigger_quick_translation_from_selection(self):
@@ -275,9 +277,9 @@ class LoTraApp:
             self.vault.shutdown()
         VRAMManager.trim_process_memory()
 
-    def start_hud_service(self):
-        """Inicia o daemon de segundo plano com escuta estrita dos 2 atalhos globais."""
-        print("[LoTra] Iniciando serviço LoTra HUD no Windows...")
+    def start_hud_service(self, show_gui: bool = True):
+        """Inicia o daemon de segundo plano com escuta estrita dos 2 atalhos globais e interface gráfica."""
+        print("[LoTra] Iniciando serviço LoTra no Windows...")
         print("[LoTra] Atalhos globais ativos: [Alt + Q] (Seleção) e [Alt + W] (OCR)")
         print("[LoTra] Instruções de uso:")
         print("  - [Alt + Q]: Selecione qualquer texto com o mouse e pressione Alt+Q (cópia automática ativada!).")
@@ -290,10 +292,18 @@ class LoTraApp:
         self.hotkey_listener.start()
         self._is_serving = True
 
-        # Loop de eventos de UI para o Tkinter HUD na thread principal
+        if show_gui:
+            # Exibe a janela principal moderna no desktop em vez do terminal
+            try:
+                self.main_window = LoTraMainWindow(app=self)
+                self.main_window.start_main_loop()
+            finally:
+                self.stop_hud_service()
+            return
+
+        # Modo headless (terminal / background sem janela principal aberta)
         try:
             while self._is_serving:
-                # Esvazia a fila de eventos vindos do HotkeyListener em segundo plano
                 while not self._ui_queue.empty():
                     try:
                         item = self._ui_queue.get_nowait()
@@ -307,7 +317,7 @@ class LoTraApp:
                             source_text=res.get("source_text", ""),
                             latency_ms=res.get("latency_ms", 0.0),
                             engine_name=res.get("engine_used", "LoTra Engine"),
-                            timeout_sec=8.0,
+                            timeout_sec=0.0,
                             cursor_pos=res.get("cursor_pos")
                         )
                     except queue.Empty:
