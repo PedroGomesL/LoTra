@@ -537,6 +537,13 @@ class DocumentContextVault:
             sec_trans = translated_text
 
         with self._get_connection() as conn:
+            # Garante integridade referencial: registra documento ad-hoc caso não exista
+            conn.execute("""
+                INSERT OR IGNORE INTO documents 
+                (doc_hash, file_size_bytes, mtime, title, created_at, last_accessed_at, known_paths)
+                VALUES (?, 0, ?, 'Quick / Ad-hoc Translation', ?, ?, '[]')
+            """, (doc_hash, now, now, now))
+
             conn.execute("""
                 INSERT INTO translation_cache 
                 (cache_key, doc_hash, page_num, source_text, context_used, translated_text, model_id, latency_ms, created_at)

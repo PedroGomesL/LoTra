@@ -126,6 +126,47 @@ python tests/test_security_privacy_scanner.py
 
 # Executa os testes de arquitetura e resiliência de hardware
 python tests/test_system_architecture.py
+
+# Executa os testes do aplicativo e integridade do compilador Windows
+python tests/test_windows_compiler_and_app.py
+```
+
+---
+
+## 🛠️ Compilador para Windows (Standalone .EXE)
+
+O LoTra inclui um sistema de compilação integrado para Windows que empacota o runtime do Python 3.14+, assets, ícones multi-resolução, motor Windows Media OCR (DirectML/WinRT) e o cofre ACID em um único arquivo executável autônomo (`dist/LoTra.exe`):
+
+```bash
+# Opção A: Compilar via Python
+python build_windows.py
+
+# Opção B: Compilar via PowerShell
+.\build_windows.ps1
+```
+
+O compilador realiza automaticamente a verificação pós-compilação executando o binário standalone e validando os subsistemas.
+
+### Utilização do Executável Standalone (`dist/LoTra.exe`)
+
+```bash
+# Inspecionar hardware físico e tier de modelo recomendado
+.\dist\LoTra.exe --profile
+
+# Tradução rápida via linha de comando
+.\dist\LoTra.exe --translate "quantum scalability"
+
+# Executar OCR nativo do Windows em uma imagem
+.\dist\LoTra.exe --ocr docs/images/latency_comparison.png
+
+# Executar pipeline completo (OCR + Tradução contextual)
+.\dist\LoTra.exe --process docs/images/latency_comparison.png
+
+# Executar bateria de auto-diagnóstico do executável
+.\dist\LoTra.exe --test
+
+# Iniciar o assistente com HUD Tooltip overlay e listener de atalho
+.\dist\LoTra.exe --gui
 ```
 
 ---
@@ -134,9 +175,10 @@ python tests/test_system_architecture.py
 
 | Atalho | Ação |
 | :---: | :--- |
+| `Ctrl + Alt + T` | Tradução instantânea do clipboard / seleção com overlay HUD |
 | `Alt + Q` | Tradução instantânea do texto selecionado na tela |
 | `Alt + S` | Abre a ferramenta de recorte para OCR em PDFs escaneados ou imagens |
-| `Esc` | Fecha o popup de tradução instantânea |
+| `Esc` | Fecha o popup de tradução instantânea (HUD Tooltip) |
 
 ---
 
