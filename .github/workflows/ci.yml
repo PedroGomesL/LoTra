@@ -1,0 +1,106 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test Suite (Windows)
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest pyinstaller
+
+      - name: Run Architecture & Resilient Vault Tests
+        run: python tests/test_system_architecture.py
+
+      - name: Run Security, Privacy & Scanner Tests
+        run: python tests/test_security_privacy_scanner.py
+
+      - name: Run Windows Compiler, OCR & App Integration Tests
+        run: python tests/test_windows_compiler_and_app.py
+
+  build-windows:
+    name: Build Standalone Windows .exe
+    needs: test
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller pillow
+
+      - name: Ensure assets
+        run: |
+          python generate_icon.py
+
+      - name: Build executable with PyInstaller
+        run: |
+          pyinstaller LoTra.spec --noconfirm --clean
+
+      - name: Validate built executable
+        run: |
+          .\dist\LoTra.exe --version
+          .\dist\LoTra.exe --test
+
+      - name: Generate SHA-256 checksum
+        run: |
+          Get-FileHash dist\LoTra.exe -Algorithm SHA256 | Format-List | Out-File dist\checksum_sha256.txt
+
+      - name: Package release artifact
+        run: |
+          Compress-Archive -Path dist\LoTra.exe, dist\checksum_sha256.txt, README.md, LICENSE -DestinationPath dist\LoTra-windows-x64.zip
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LoTra-windows-x64
+          path: dist/LoTra-windows-x64.zip
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-windows
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: LoTra-windows-x64
+          path: release_assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release_assets/LoTra-windows-x64.zip
+          generate_release_notes: true

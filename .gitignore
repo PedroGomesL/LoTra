@@ -35,6 +35,7 @@ __pycache__/
 build/
 dist/
 *.spec
+!LoTra.spec
 develop-eggs/
 downloads/
 eggs/
