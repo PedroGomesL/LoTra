@@ -68,11 +68,13 @@ def clean_previous_builds():
             if not removed:
                 print(f"  [WARN] Diretório {p} retido por lock do sistema, prosseguindo com sobrescrita.")
 
-    # Remove arquivos .spec residuais se desejado
+    # Não remove LoTra.spec oficial do repositório
     for spec_file in BASE_DIR.glob("*.spec"):
+        if spec_file.name == "LoTra.spec":
+            continue
         try:
             spec_file.unlink()
-            print(f"  [OK] Spec removido: {spec_file.name}")
+            print(f"  [OK] Spec temporário removido: {spec_file.name}")
         except Exception:
             pass
 
@@ -81,66 +83,73 @@ def run_pyinstaller_build(mode: str = "onefile") -> Path:
     print_header(f"COMPILANDO STANDALONE WINDOWS (.EXE) - MODO: {mode.upper()}")
     t0 = time.perf_counter()
 
-    # Monta comando do PyInstaller
-    # Separador de dados no Windows é ';'
-    cmd = [
-        sys.executable, "-m", "PyInstaller",
-        "--noconfirm",
-        "--clean",
-        "--name", "LoTra",
-        "--icon", str(ICON_PATH),
-        f"--add-data={WIN_OCR_SCRIPT};src",
-        f"--add-data={ICON_PATH};assets",
-    ]
-
-    if mode == "onefile":
-        cmd.append("--onefile")
+    spec_path = BASE_DIR / "LoTra.spec"
+    if spec_path.exists() and mode == "onefile":
+        cmd = [
+            sys.executable, "-m", "PyInstaller",
+            "LoTra.spec",
+            "--noconfirm",
+            "--clean"
+        ]
     else:
-        cmd.append("--onedir")
+        # Monta comando do PyInstaller dinâmico
+        cmd = [
+            sys.executable, "-m", "PyInstaller",
+            "--noconfirm",
+            "--clean",
+            "--name", "LoTra",
+            "--icon", str(ICON_PATH),
+            f"--add-data={WIN_OCR_SCRIPT};src",
+            f"--add-data={ICON_PATH};assets",
+        ]
+        if mode == "onefile":
+            cmd.append("--onefile")
+        else:
+            cmd.append("--onedir")
 
-    # Módulos ocultos para garantir empacotamento completo
-    hidden_imports = [
-        "sqlite3",
-        "ctypes",
-        "ctypes.wintypes",
-        "PIL",
-        "PIL.Image",
-        "PIL.ImageDraw",
-        "PIL.IcoImagePlugin",
-        "numpy",
-        "urllib.request",
-        "urllib.error",
-        "tkinter",
-        "tkinter.ttk",
-        "json",
-        "platform",
-        "subprocess",
-        "dataclasses",
-        "hashlib",
-        "uuid",
-        "threading",
-        "app",
-        "ocr_engine",
-        "translation_engine",
-        "hud_tooltip",
-        "resource_utils",
-        "platform_core",
-        "adaptive_engine_orchestrator",
-        "document_context_vault",
-        "privacy_vault",
-        "incremental_scanner",
-        "pdf_resilience_manager"
-    ]
+        # Módulos ocultos para garantir empacotamento completo
+        hidden_imports = [
+            "sqlite3",
+            "ctypes",
+            "ctypes.wintypes",
+            "PIL",
+            "PIL.Image",
+            "PIL.ImageDraw",
+            "PIL.IcoImagePlugin",
+            "numpy",
+            "urllib.request",
+            "urllib.error",
+            "tkinter",
+            "tkinter.ttk",
+            "json",
+            "platform",
+            "subprocess",
+            "dataclasses",
+            "hashlib",
+            "uuid",
+            "threading",
+            "app",
+            "ocr_engine",
+            "translation_engine",
+            "hud_tooltip",
+            "resource_utils",
+            "platform_core",
+            "adaptive_engine_orchestrator",
+            "document_context_vault",
+            "privacy_vault",
+            "incremental_scanner",
+            "pdf_resilience_manager"
+        ]
 
-    for hi in hidden_imports:
-        cmd.extend(["--hidden-import", hi])
+        for hi in hidden_imports:
+            cmd.extend(["--hidden-import", hi])
 
-    # Adiciona caminhos de busca
-    cmd.extend(["--paths", str(BASE_DIR / "src")])
-    cmd.extend(["--paths", str(BASE_DIR)])
+        # Adiciona caminhos de busca
+        cmd.extend(["--paths", str(BASE_DIR / "src")])
+        cmd.extend(["--paths", str(BASE_DIR)])
 
-    # Entry point
-    cmd.append(str(ENTRY_POINT))
+        # Entry point
+        cmd.append(str(ENTRY_POINT))
 
     print(f"Executando comando de compilação:")
     print(" ".join(cmd[:12]) + " ... [imports e flags]")

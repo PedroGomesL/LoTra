@@ -65,7 +65,7 @@ jobs:
 
       - name: Build executable with PyInstaller
         run: |
-          pyinstaller LoTra.spec --noconfirm --clean
+          python -m PyInstaller LoTra.spec --noconfirm --clean
 
       - name: Validate built executable
         run: |
@@ -91,6 +91,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build-windows
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Download artifact

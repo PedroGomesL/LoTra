@@ -16,7 +16,7 @@ import time
 import threading
 import ctypes
 import ctypes.wintypes
-from typing import Optional, Callable, Dict, Any
+from typing import Optional, Callable, Dict, Any, Tuple
 
 # Win32 Constants
 MOD_ALT = 0x0001
@@ -31,6 +31,22 @@ VK_C = 0x43
 VK_CONTROL = 0x11
 VK_MENU = 0x12  # ALT key
 KEYEVENTF_KEYUP = 0x0002
+
+class RECT(ctypes.Structure):
+    _fields_ = [
+        ("left", ctypes.c_long),
+        ("top", ctypes.c_long),
+        ("right", ctypes.c_long),
+        ("bottom", ctypes.c_long),
+    ]
+
+class MONITORINFO(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", ctypes.c_ulong),
+        ("rcMonitor", RECT),
+        ("rcWork", RECT),
+        ("dwFlags", ctypes.c_ulong),
+    ]
 
 def enable_dpi_awareness():
     """Habilita conscientização de DPI por monitor no Windows para evitar distorção e coordenadas erradas."""
@@ -97,8 +113,85 @@ def _setup_win32_prototypes():
     u32.GetClipboardSequenceNumber.restype = ctypes.c_uint
     u32.GetClipboardSequenceNumber.argtypes = []
 
+    # User32 Multi-Monitor & Foreground Window
+    u32.MonitorFromPoint.restype = ctypes.c_void_p
+    u32.MonitorFromPoint.argtypes = [ctypes.wintypes.POINT, ctypes.c_uint]
+    u32.GetMonitorInfoW.restype = ctypes.c_bool
+    u32.GetMonitorInfoW.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    u32.GetForegroundWindow.restype = ctypes.wintypes.HWND
+    u32.GetForegroundWindow.argtypes = []
+    u32.GetWindowThreadProcessId.restype = ctypes.wintypes.DWORD
+    u32.GetWindowThreadProcessId.argtypes = [ctypes.wintypes.HWND, ctypes.POINTER(ctypes.wintypes.DWORD)]
+
 enable_dpi_awareness()
 _setup_win32_prototypes()
+
+def get_monitor_work_area_for_point(x: int, y: int) -> Tuple[int, int, int, int]:
+    """
+    Retorna a área de trabalho (rcWork: left, top, right, bottom) do monitor que contém o ponto (x, y).
+    Garante suporte a múltiplos monitores com coordenadas virtuais negativas.
+    """
+    if sys.platform == "win32":
+        try:
+            pt = ctypes.wintypes.POINT(int(x), int(y))
+            MONITOR_DEFAULTTONEAREST = 2
+            h_mon = ctypes.windll.user32.MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST)
+            if h_mon:
+                mi = MONITORINFO()
+                mi.cbSize = ctypes.sizeof(MONITORINFO)
+                if ctypes.windll.user32.GetMonitorInfoW(h_mon, ctypes.byref(mi)):
+                    return (mi.rcWork.left, mi.rcWork.top, mi.rcWork.right, mi.rcWork.bottom)
+        except Exception:
+            pass
+    return (0, 0, 1920, 1080)
+
+def is_process_elevated() -> bool:
+    """Verifica se o processo atual do LoTra está rodando com privilégios de Administrador."""
+    if sys.platform != "win32":
+        return False
+    try:
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+def is_foreground_window_elevated() -> bool:
+    """Verifica se a janela atualmente em primeiro plano pertence a um processo elevado (Admin)."""
+    if sys.platform != "win32":
+        return False
+    try:
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        advapi32 = ctypes.windll.advapi32
+        hwnd = user32.GetForegroundWindow()
+        if not hwnd:
+            return False
+        pid = ctypes.wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if pid.value == 0:
+            return False
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        h_proc = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid.value)
+        if not h_proc:
+            return True  # Acesso negado pelo kernel ao tentar abrir: janela com integridade maior
+        try:
+            TOKEN_QUERY = 0x0008
+            h_token = ctypes.wintypes.HANDLE()
+            if not advapi32.OpenProcessToken(h_proc, TOKEN_QUERY, ctypes.byref(h_token)):
+                return True
+            try:
+                class TOKEN_ELEVATION(ctypes.Structure):
+                    _fields_ = [("TokenIsElevated", ctypes.wintypes.DWORD)]
+                elevation = TOKEN_ELEVATION()
+                ret_len = ctypes.wintypes.DWORD()
+                if advapi32.GetTokenInformation(h_token, 20, ctypes.byref(elevation), ctypes.sizeof(elevation), ctypes.byref(ret_len)):
+                    return bool(elevation.TokenIsElevated)
+            finally:
+                kernel32.CloseHandle(h_token)
+        finally:
+            kernel32.CloseHandle(h_proc)
+    except Exception:
+        pass
+    return False
 
 def get_windows_clipboard_text() -> str:
     """Lê texto da área de transferência do Windows via Win32 API direta."""
@@ -274,7 +367,12 @@ def simulate_copy_selection(timeout_sec: float = 0.35) -> str:
         if user32.GetClipboardSequenceNumber() != seq_before:
             break
 
-    # 4. Retorna o texto capturado
+    # 4. Retorna o texto capturado ou trata restrição de privilégio UIPI
+    if user32.GetClipboardSequenceNumber() == seq_before:
+        if not is_process_elevated() and is_foreground_window_elevated():
+            return "[Aviso UIPI] Janela em modo Administrador detectada. Execute o LoTra como Administrador ou use Ctrl+C antes do Alt+Q."
+        return ""
+
     return get_windows_clipboard_text()
 
 class HUDTooltip:
@@ -327,9 +425,19 @@ class HUDTooltip:
         trans_display = normalize_text_spacing(translated_text)
         trans_display = re.sub(r'\n\s*\n+', '\n\n', trans_display.strip())
 
-        # Limites da tela
-        screen_w = window.winfo_screenwidth()
-        screen_h = window.winfo_screenheight()
+        # Obtém posição do cursor com suporte a múltiplos monitores
+        if cursor_pos is None and sys.platform == "win32":
+            pt = ctypes.wintypes.POINT()
+            ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
+            cx, cy = pt.x, pt.y
+        elif cursor_pos:
+            cx, cy = cursor_pos
+        else:
+            cx, cy = 400, 300
+
+        # Limites e área de trabalho real do monitor onde o cursor se encontra (suporte multi-monitor)
+        mon_left, mon_top, mon_right, mon_bottom = get_monitor_work_area_for_point(cx, cy)
+        mon_w = max(400, mon_right - mon_left)
 
         # Ajuste dinâmico de largura de quebra para garantir tipografia e proporções ideais
         char_len = len(trans_display)
@@ -342,8 +450,8 @@ class HUDTooltip:
         else:
             wrap_width = 620
 
-        # Não excede a largura utilizável do monitor
-        max_wrap = max(360, screen_w - 80)
+        # Não excede a largura utilizável do monitor atual
+        max_wrap = max(360, mon_w - 80)
         if wrap_width > 0:
             wrap_width = min(wrap_width, max_wrap)
 
@@ -379,25 +487,25 @@ class HUDTooltip:
         win_w = window.winfo_reqwidth()
         win_h = window.winfo_reqheight()
 
-        if cursor_pos is None and sys.platform == "win32":
-            pt = ctypes.wintypes.POINT()
-            ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
-            cx, cy = pt.x, pt.y
-        elif cursor_pos:
-            cx, cy = cursor_pos
-        else:
-            cx, cy = 400, 300
-
         # Posiciona 15px abaixo e 15px à direita do ponteiro do mouse
         pos_x = cx + 15
         pos_y = cy + 18
 
-        if pos_x + win_w > screen_w - 20:
-            pos_x = max(20, screen_w - win_w - 20)
-        if pos_y + win_h > screen_h - 40:
-            pos_y = max(20, cy - win_h - 10)
-        if pos_y < 20:
-            pos_y = 20
+        # Clamping com suporte total a múltiplos monitores (incluindo coordenadas virtuais negativas)
+        min_x = mon_left + 15
+        max_x = mon_right - win_w - 15
+        min_y = mon_top + 15
+        max_y = mon_bottom - win_h - 15
+
+        if pos_x > max_x:
+            pos_x = max(min_x, cx - win_w - 15) if (cx - win_w - 15) >= min_x else max_x
+        if pos_x < min_x:
+            pos_x = min_x
+
+        if pos_y > max_y:
+            pos_y = max(min_y, cy - win_h - 10)
+        if pos_y < min_y:
+            pos_y = min_y
 
         window.geometry(f"+{pos_x}+{pos_y}")
 

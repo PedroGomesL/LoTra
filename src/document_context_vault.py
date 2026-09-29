@@ -72,6 +72,7 @@ class DocumentContextVault:
         # Otimizações de robustez e velocidade
         conn.execute("PRAGMA journal_mode = WAL;")
         conn.execute("PRAGMA synchronous = NORMAL;")
+        conn.execute("PRAGMA wal_autocheckpoint = 1000;")
         conn.execute("PRAGMA busy_timeout = 5000;")
         conn.execute("PRAGMA mmap_size = 268435456;") # 256MB memory map
         conn.execute("PRAGMA temp_store = MEMORY;")
@@ -81,6 +82,93 @@ class DocumentContextVault:
                 yield conn
         finally:
             conn.close()
+
+    def checkpoint_wal(self, mode: str = "TRUNCATE") -> Dict[str, Any]:
+        """
+        Executa checkpoint formal do log WAL no SQLite (TRUNCATE, PASSIVE, FULL, RESTART).
+        Limpa e trunca o arquivo de log para liberar espaço e garantir que as alterações estejam no arquivo .db.
+        """
+        valid_modes = {"PASSIVE", "FULL", "RESTART", "TRUNCATE"}
+        target_mode = mode.upper() if mode.upper() in valid_modes else "TRUNCATE"
+        try:
+            with self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute(f"PRAGMA wal_checkpoint({target_mode});")
+                row = cur.fetchone()
+                return {
+                    "success": True,
+                    "busy": row[0] if row else 0,
+                    "log_frames": row[1] if row else 0,
+                    "checkpointed_frames": row[2] if row else 0,
+                    "mode": target_mode
+                }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def vacuum_db(self) -> Dict[str, Any]:
+        """Executa VACUUM para desfragmentar o banco de dados e liberar espaço em disco."""
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=15.0)
+            conn.isolation_level = None
+            try:
+                conn.execute("VACUUM;")
+            finally:
+                conn.close()
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def get_database_size_bytes(self) -> Dict[str, int]:
+        """Retorna o tamanho em bytes do banco principal, do arquivo WAL e do total."""
+        db_size = os.path.getsize(self.db_path) if os.path.exists(self.db_path) else 0
+        wal_path = f"{self.db_path}-wal"
+        wal_size = os.path.getsize(wal_path) if os.path.exists(wal_path) else 0
+        return {
+            "db_bytes": db_size,
+            "wal_bytes": wal_size,
+            "total_bytes": db_size + wal_size
+        }
+
+    def enforce_size_quota(self, max_size_mb: int = 500) -> Dict[str, Any]:
+        """
+        Garante que o banco de dados + arquivo WAL não excedam a cota estipulada em megabytes.
+        Caso o limite seja ultrapassado:
+        1. Executa checkpoint TRUNCATE do WAL.
+        2. Remove as entradas mais antigas da tabela translation_cache segundo política LRU.
+        3. Executa VACUUM para recuperar os blocos liberados no sistema de arquivos.
+        """
+        quota_bytes = max_size_mb * 1024 * 1024
+        sizes = self.get_database_size_bytes()
+        evicted_count = 0
+
+        if sizes["total_bytes"] > quota_bytes:
+            self.checkpoint_wal(mode="TRUNCATE")
+            sizes = self.get_database_size_bytes()
+
+            if sizes["total_bytes"] > quota_bytes:
+                with self._get_connection() as conn:
+                    cur = conn.cursor()
+                    cur.execute("SELECT count(*) FROM translation_cache")
+                    total_cached = cur.fetchone()[0]
+                    if total_cached > 0:
+                        limit_evict = max(1, total_cached // 4)
+                        cur.execute(
+                            "DELETE FROM translation_cache WHERE cache_key IN "
+                            "(SELECT cache_key FROM translation_cache ORDER BY created_at ASC LIMIT ?)",
+                            (limit_evict,)
+                        )
+                        evicted_count = cur.rowcount
+
+                self.vacuum_db()
+                self.checkpoint_wal(mode="TRUNCATE")
+                sizes = self.get_database_size_bytes()
+
+        return {
+            "quota_mb": max_size_mb,
+            "current_total_mb": round(sizes["total_bytes"] / (1024 * 1024), 2),
+            "evicted_entries": evicted_count,
+            "under_quota": sizes["total_bytes"] <= quota_bytes
+        }
 
     def health_check(self) -> Dict[str, Any]:
         """

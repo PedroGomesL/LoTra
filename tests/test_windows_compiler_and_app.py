@@ -31,7 +31,10 @@ from hud_tooltip import (
     get_windows_clipboard_text,
     set_windows_clipboard_text,
     simulate_copy_selection,
-    normalize_text_spacing
+    normalize_text_spacing,
+    get_monitor_work_area_for_point,
+    is_process_elevated,
+    is_foreground_window_elevated
 )
 from app import LoTraApp
 from PIL import Image, ImageDraw
@@ -63,8 +66,23 @@ def test_clipboard_and_hud_readiness():
     hud.pump_events()
     hud.dismiss()
     assert hud._is_active is False
+
+    # Valida renderização com suporte a múltiplos monitores e coordenadas virtuais negativas
+    work_area = get_monitor_work_area_for_point(100, 100)
+    assert len(work_area) == 4
+    hud.show("Multi-monitor Test", "Source", cursor_pos=(-600, 200))
+    assert hud._is_active is True
+    hud.pump_events()
+    hud.dismiss()
     hud.destroy()
-    print("  [PASS] HUD Tooltip ciclo de vida (show, pump_events, dismiss, destroy) validado com sucesso.")
+    print("  [PASS] HUD Tooltip ciclo de vida e suporte multi-monitor validado com sucesso.")
+
+    # Valida detecção de integridade de privilégios UIPI
+    proc_elevated = is_process_elevated()
+    fg_elevated = is_foreground_window_elevated()
+    assert isinstance(proc_elevated, bool)
+    assert isinstance(fg_elevated, bool)
+    print("  [PASS] Detecção de integridade UIPI e janelas elevadas validada!")
 
 def test_translation_engine_and_cache():
     print(">>> 3. Testando Pipeline de Tradução e Cache do Cofre...")
@@ -97,6 +115,12 @@ def test_translation_engine_and_cache():
         q_item = app._ui_queue.get()
         assert "escalabilidade quântica" in q_item["translated_text"].lower()
         print("  [PASS] Trigger assíncrono thread-safe via _ui_queue validado!")
+
+        # Teste 4: Despacho de aviso UIPI para o HUD
+        app._display_hud_notice("[Aviso UIPI] Janela de Administrador detectada.")
+        assert app.hud._is_active is True or not app._ui_queue.empty()
+        app.hud.dismiss()
+        print("  [PASS] Despacho de avisos informativos UIPI para o HUD validado!")
 
 def test_ocr_engine_robustness():
     print(">>> 4. Testando Robustez do Motor Windows Media OCR e Codificação UTF-8...")

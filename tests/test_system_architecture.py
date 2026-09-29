@@ -118,7 +118,22 @@ def test_document_context_vault():
         assert cached is not None
         assert "diafonia" in cached
         print(f"Cache Lookup: {lookup_ms:.3f} ms (Resultado: '{cached[:50]}...')")
-        print("[PASS] DocumentContextVault validado com sucesso!")
+
+        # 6. Testa SQLite WAL auto-checkpointing, vacuum e quota de retenção
+        cp_res = vault.checkpoint_wal(mode="TRUNCATE")
+        assert cp_res["success"] is True
+        assert cp_res["mode"] == "TRUNCATE"
+
+        vac_res = vault.vacuum_db()
+        assert vac_res["success"] is True
+
+        sizes = vault.get_database_size_bytes()
+        assert sizes["db_bytes"] > 0
+        assert sizes["total_bytes"] >= sizes["db_bytes"]
+
+        quota_res = vault.enforce_size_quota(max_size_mb=100)
+        assert quota_res["under_quota"] is True
+        print("[PASS] DocumentContextVault, WAL Checkpointing e Quotas validados com sucesso!")
 
 def test_adaptive_orchestrator():
     print("\n>>> Testando AdaptiveEngineOrchestrator...")

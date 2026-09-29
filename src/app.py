@@ -124,6 +124,27 @@ class LoTraApp:
             timeout_sec=8.0
         )
 
+    def _display_hud_notice(self, notice_text: str):
+        """Exibe avisos informativos do sistema (ex: UIPI / privilégios) no HUD."""
+        payload = {
+            "translated_text": notice_text,
+            "source_text": "",
+            "latency_ms": 0.0,
+            "engine_used": "LoTra Security Shield (UIPI)",
+            "timeout_sec": 7.0
+        }
+        if threading.current_thread() is not threading.main_thread():
+            self._ui_queue.put(payload)
+            return
+
+        self.hud.show(
+            translated_text=notice_text,
+            source_text="",
+            latency_ms=0.0,
+            engine_name="LoTra Security Shield (UIPI)",
+            timeout_sec=7.0
+        )
+
     def trigger_quick_translation_from_selection(self):
         """
         Disparado via [Alt + Q]:
@@ -132,8 +153,15 @@ class LoTraApp:
         3. Traduz via motor local e enfileira exibição no HUD tooltip.
         """
         clip_text = simulate_copy_selection()
+        if clip_text.startswith("[Aviso UIPI]"):
+            self._display_hud_notice(clip_text)
+            return
+
         if not clip_text:
             clip_text = get_windows_clipboard_text()
+            if not clip_text:
+                return
+
         self._dispatch_translation(clip_text)
 
     def trigger_quick_translation_from_clipboard(self):
@@ -153,6 +181,7 @@ class LoTraApp:
         from PIL import Image, ImageGrab
         user32 = ctypes.windll.user32 if sys.platform == "win32" else None
         seq_before = user32.GetClipboardSequenceNumber() if user32 else 0
+        hwnd_initial = user32.GetForegroundWindow() if user32 else None
 
         # 1. Invoca o recortador de tela oficial do Windows (ms-screenclip:)
         try:
@@ -161,12 +190,16 @@ class LoTraApp:
         except Exception as e:
             print(f"[LoTra OCR Snip] Aviso ao iniciar ms-screenclip: {e}")
 
-        # 2. Aguarda até 15s pela imagem selecionada pelo usuário na área de transferência
+        # 2. Aguarda recorte do usuário na área de transferência com cancelamento rápido se Esc for pressionado
         deadline = time.perf_counter() + 15.0
         grabbed_img: Optional[Image.Image] = None
+        overlay_activated = False
+        overlay_closed_at = None
 
         while time.perf_counter() < deadline:
-            time.sleep(0.08)
+            time.sleep(0.06)
+
+            # Verifica se o clipboard foi atualizado com novo recorte
             if user32 and user32.GetClipboardSequenceNumber() != seq_before:
                 try:
                     data = ImageGrab.grabclipboard()
@@ -176,17 +209,20 @@ class LoTraApp:
                 except Exception:
                     pass
 
-        # 3. Fallback: se o usuário já possuía uma imagem no clipboard
-        if not grabbed_img:
-            try:
-                data = ImageGrab.grabclipboard()
-                if isinstance(data, Image.Image):
-                    grabbed_img = data
-            except Exception:
-                pass
+            # Detecção de cancelamento com Esc (fechamento do overlay sem alteração no clipboard)
+            if user32:
+                curr_hwnd = user32.GetForegroundWindow()
+                if curr_hwnd != hwnd_initial:
+                    overlay_activated = True
+                elif overlay_activated and curr_hwnd == hwnd_initial:
+                    if overlay_closed_at is None:
+                        overlay_closed_at = time.perf_counter()
+                    elif time.perf_counter() - overlay_closed_at > 0.25:
+                        break
 
+        # 3. Se nenhum novo recorte foi efetuado, encerra graciosamente sem processar imagens antigas residuais
         if not grabbed_img:
-            print("[LoTra OCR Snip] Nenhum recorte ou imagem capturada.")
+            print("[LoTra OCR Snip] Recorte cancelado pelo usuário ou nenhuma imagem capturada.")
             return
 
         # 4. Executa OCR local nativo com buffers efêmeros

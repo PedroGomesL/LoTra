@@ -8,18 +8,18 @@ Todas as issues foram cadastradas oficialmente no repositório remoto [`PedroGom
 
 ## 1. Matriz de Rastreamento de Issues no GitHub
 
-| # | Título da Issue | Tipo / Rótulos | Arquivo / Módulo Afetado | Link no GitHub |
-| :-: | :--- | :--- | :--- | :--- |
-| **#1** | `bug(windows): UIPI blocks synthetic Ctrl+C input when capturing selection from elevated Admin windows` | `bug`, `security` | [`src/hud_tooltip.py`](../src/hud_tooltip.py) | [#1](https://github.com/PedroGomesL/LoTra/issues/1) |
-| **#2** | `bug(hud): Multi-monitor & High-DPI tooltip positioning edge cases across virtual screens with negative coordinates` | `bug`, `accessibility` | [`src/hud_tooltip.py`](../src/hud_tooltip.py) | [#2](https://github.com/PedroGomesL/LoTra/issues/2) |
-| **#3** | `bug(ocr): Esc cancellation during ms-screenclip: causes 15s freeze and processes stale clipboard image` | `bug`, `enhancement` | [`src/app.py`](../src/app.py) | [#3](https://github.com/PedroGomesL/LoTra/issues/3) |
-| **#4** | `feat(engine): Local ONNX & DirectML runtime integration for MarianMT / NLLB-200 offline translation` | `enhancement`, `architecture`, `performance` | [`src/translation_engine.py`](../src/translation_engine.py) | [#4](https://github.com/PedroGomesL/LoTra/issues/4) |
-| **#5** | `perf(vault): SQLite WAL auto-checkpointing, database vacuuming, and retention size quotas` | `architecture`, `performance` | [`src/document_context_vault.py`](../src/document_context_vault.py) | [#5](https://github.com/PedroGomesL/LoTra/issues/5) |
-| **#6** | `feat(platform): Native Linux (Wayland / X11) and macOS (Accessibility API) cross-platform expansion` | `enhancement`, `architecture` | [`src/platform_core.py`](../src/platform_core.py) | [#6](https://github.com/PedroGomesL/LoTra/issues/6) |
-| **#7** | `ci(devops): GitHub Actions workflow for automated test matrix, PyInstaller Windows .exe build, and releases` | `documentation`, `enhancement` | `.github/workflows/ci.yml` | [#7](https://github.com/PedroGomesL/LoTra/issues/7) |
-| **#8** | `bug(build): Eliminate hardcoded absolute user paths in LoTra.spec for portable builds` | `bug`, `enhancement` | [`LoTra.spec`](../LoTra.spec) | [#8](https://github.com/PedroGomesL/LoTra/issues/8) |
-| **#9** | `feat(pdf): Support for Compressed Object Streams (/ObjStm in PDF 1.5+) and encrypted PDFs in Stream Carving` | `enhancement`, `architecture` | [`src/pdf_resilience_manager.py`](../src/pdf_resilience_manager.py) | [#9](https://github.com/PedroGomesL/LoTra/issues/9) |
-| **#10** | `bug(scanner): Handle circular NTFS directory junctions, symlinks, and permission errors during scan` | `bug`, `performance` | [`src/incremental_scanner.py`](../src/incremental_scanner.py) | [#10](https://github.com/PedroGomesL/LoTra/issues/10) |
+| # | Título da Issue | Tipo / Rótulos | Status | Arquivo / Módulo Afetado | Link no GitHub |
+| :-: | :--- | :--- | :--- | :--- | :--- |
+| **#1** | `bug(windows): UIPI blocks synthetic Ctrl+C input when capturing selection from elevated Admin windows` | `bug`, `security` | **RESOLVIDO** | [`src/hud_tooltip.py`](../src/hud_tooltip.py) | [#1](https://github.com/PedroGomesL/LoTra/issues/1) |
+| **#2** | `bug(hud): Multi-monitor & High-DPI tooltip positioning edge cases across virtual screens with negative coordinates` | `bug`, `accessibility` | **RESOLVIDO** | [`src/hud_tooltip.py`](../src/hud_tooltip.py) | [#2](https://github.com/PedroGomesL/LoTra/issues/2) |
+| **#3** | `bug(ocr): Esc cancellation during ms-screenclip: causes 15s freeze and processes stale clipboard image` | `bug`, `enhancement` | **RESOLVIDO** | [`src/app.py`](../src/app.py) | [#3](https://github.com/PedroGomesL/LoTra/issues/3) |
+| **#4** | `feat(engine): Local ONNX & DirectML runtime integration for MarianMT / NLLB-200 offline translation` | `enhancement`, `architecture`, `performance` | *Roadmap* | [`src/translation_engine.py`](../src/translation_engine.py) | [#4](https://github.com/PedroGomesL/LoTra/issues/4) |
+| **#5** | `perf(vault): SQLite WAL auto-checkpointing, database vacuuming, and retention size quotas` | `architecture`, `performance` | **RESOLVIDO** | [`src/document_context_vault.py`](../src/document_context_vault.py) | [#5](https://github.com/PedroGomesL/LoTra/issues/5) |
+| **#6** | `feat(platform): Native Linux (Wayland / X11) and macOS (Accessibility API) cross-platform expansion` | `enhancement`, `architecture` | *Roadmap* | [`src/platform_core.py`](../src/platform_core.py) | [#6](https://github.com/PedroGomesL/LoTra/issues/6) |
+| **#7** | `ci(devops): GitHub Actions workflow for automated test matrix, PyInstaller Windows .exe build, and releases` | `documentation`, `enhancement` | **RESOLVIDO** | `.github/workflows/ci.yml` | [#7](https://github.com/PedroGomesL/LoTra/issues/7) |
+| **#8** | `bug(build): Eliminate hardcoded absolute user paths in LoTra.spec for portable builds` | `bug`, `enhancement` | **RESOLVIDO** | [`LoTra.spec`](../LoTra.spec), [`build_windows.py`](../build_windows.py) | [#8](https://github.com/PedroGomesL/LoTra/issues/8) |
+| **#9** | `feat(pdf): Support for Compressed Object Streams (/ObjStm in PDF 1.5+) and encrypted PDFs in Stream Carving` | `enhancement`, `architecture` | *Roadmap* | [`src/pdf_resilience_manager.py`](../src/pdf_resilience_manager.py) | [#9](https://github.com/PedroGomesL/LoTra/issues/9) |
+| **#10** | `bug(scanner): Handle circular NTFS directory junctions, symlinks, and permission errors during scan` | `bug`, `performance` | **RESOLVIDO** | [`src/incremental_scanner.py`](../src/incremental_scanner.py) | [#10](https://github.com/PedroGomesL/LoTra/issues/10) |
 
 ---
 
@@ -154,15 +154,17 @@ Todas as issues foram cadastradas oficialmente no repositório remoto [`PedroGom
 
 ## 3. Estado Atual dos Testes e Validação Local
 
-A bateria completa de testes existentes foi executada e validada:
-1. `tests/test_system_architecture.py` -> **100% PASS** (Invariância de hash, SQLite WAL, injeção contextual, profiler de hardware, supressão de marca-texto HSV e stream carving).
-2. `tests/test_security_privacy_scanner.py` -> **100% PASS** (Princípio Read-Only estrito, proteção anti-vazamento, scan incremental em duas fases, cancelamento cooperativo < 1s, health checks e migrações).
-3. `tests/test_windows_compiler_and_app.py` -> **100% PASS** (Resolução de recursos, clipboard Win32, OCR nativo UTF-8, normalização de texto e atalhos Alt+Q / Alt+W).
+A bateria completa de testes de engenharia foi executada e validada:
+1. `tests/test_system_architecture.py` -> **100% PASS** (Invariância de hash, SQLite WAL mode, auto-checkpointing TRUNCATE, vacuuming, quotas de retenção, injeção contextual hierárquica, profiler de hardware, supressão de marca-texto HSV e stream carving).
+2. `tests/test_security_privacy_scanner.py` -> **100% PASS** (Princípio Read-Only estrito, proteção anti-vazamento, scan incremental em duas fases, cancelamento cooperativo < 1s, health checks, migrações formais e tolerância a links circulares/permissões).
+3. `tests/test_windows_compiler_and_app.py` -> **100% PASS** (Resolução de recursos, clipboard Win32, OCR nativo UTF-8, normalização de texto, suporte multi-monitor virtual com coordenadas negativas, detecção de privilégios UIPI e atalhos Alt+Q / Alt+W).
+4. `python build_windows.py` -> **100% PASS** (Compilação standalone concluída em ~26s, binário `dist/LoTra.exe` validado com integridade).
 
 ---
 
-## 4. Próximos Passos Prioritários
+## 4. Próximos Passos e Roadmap de Evolução
 
-1. **Correção Imediata da Portabilidade**: Atualizar [`LoTra.spec`](../LoTra.spec) com caminhos relativos ao `SPECPATH` para garantir compatibilidade com builds remotos.
-2. **Implementação do Workflow de CI**: Submeter `.github/workflows/ci.yml` cobrindo testes e compilação do executável.
-3. **Refinamento do HUD e UIPI**: Implementar detecção de nível de integridade da janela ativa para mensagens de erro claras sob janelas de Administrador.
+Com as correções de engenharia aplicadas no núcleo Win32, HUD e Vault, os próximos marcos estratégicos são:
+1. **Modelos Neurais Locais ONNX / DirectML ([Issue #4](https://github.com/PedroGomesL/LoTra/issues/4))**: Empacotamento de modelos MarianMT / NLLB-200 quantizados com DirectML para inferência neural sem Ollama.
+2. **Suporte Cross-Platform Linux / macOS ([Issue #6](https://github.com/PedroGomesL/LoTra/issues/6))**: Implementação dos backends de atalhos e seleção de texto para Wayland/X11 e macOS Accessibility API.
+3. **Resiliência Avançada de PDFs ([Issue #9](https://github.com/PedroGomesL/LoTra/issues/9))**: Suporte a decompressão FlateDecode de `/ObjStm` e dicionários `/Encrypt` em streams corrompidos sem tabela xref.

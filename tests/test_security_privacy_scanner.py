@@ -464,6 +464,43 @@ def test_pdf_native_pipeline_blank_detection_and_montage():
         
         print("  [OK] Extração nativa, detecção de páginas em branco e montagem de 2 páginas validadas!")
 
+def test_scanner_resilience_symlinks_and_errors():
+    print(">>> 12. Testando Resiliência a Junções / Symlinks e Tratamento de Permissões...")
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
+        base_dir = os.path.join(tmpdir, "scan_root")
+        os.makedirs(base_dir, exist_ok=True)
+
+        doc1 = os.path.join(base_dir, "doc1.txt")
+        with open(doc1, "w", encoding="utf-8") as f:
+            f.write("Important document text")
+
+        sub_dir = os.path.join(base_dir, "subfolder")
+        os.makedirs(sub_dir, exist_ok=True)
+        doc2 = os.path.join(sub_dir, "doc2.txt")
+        with open(doc2, "w", encoding="utf-8") as f:
+            f.write("Second document text")
+
+        # Testa criação de link simbólico ou junção circular se o SO permitir
+        link_dir = os.path.join(sub_dir, "circular_link")
+        try:
+            os.symlink(base_dir, link_dir, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            pass
+
+        db_path = os.path.join(tmpdir, "symlink_test.db")
+        vault = DocumentContextVault(db_path=db_path)
+        scanner = IncrementalScanner(vault=vault)
+
+        # O scan deve completar com sucesso sem entrar em loop infinito
+        t0 = time.perf_counter()
+        res = scanner.scan_directory(base_dir)
+        elapsed = time.perf_counter() - t0
+
+        assert res["status"] == "completed"
+        assert res["total_discovered"] >= 2
+        assert elapsed < 5.0, f"Scan demorou demais, possível loop infinito: {elapsed:.2f}s"
+        print(f"  [OK] Scan completado em {elapsed*1000:.2f}ms sem loop infinito por junções!")
+
 if __name__ == "__main__":
     test_strict_read_only_principle()
     test_privacy_and_anti_leak_vault()
@@ -476,6 +513,7 @@ if __name__ == "__main__":
     test_large_document_fingerprint_and_foreign_key_consistency()
     test_batch_fast_discovery_and_modification_lifecycle()
     test_pdf_native_pipeline_blank_detection_and_montage()
+    test_scanner_resilience_symlinks_and_errors()
     print("\n=================================================================")
     print("TODOS OS TESTES DE SEGURANÇA, PRIVACIDADE E SCANNER PASSARAM 100%!")
     print("=================================================================")

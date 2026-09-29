@@ -138,7 +138,19 @@ class IncrementalScanner:
             known_by_size.setdefault(size, []).append((d_hash, paths[0] if paths else ""))
 
         # Caminhada no diretório (respeitando Princípio Read-Only: zero escritas!)
-        for root, _, files in os.walk(norm_root):
+        # Proteção contra referências circulares em junções NTFS e tolerância a erros de permissão
+        visited_dirs = set()
+        for root, dirs, files in os.walk(norm_root, onerror=lambda err: None):
+            try:
+                st_dir = os.stat(root)
+                dir_id = (st_dir.st_dev, st_dir.st_ino)
+                if dir_id in visited_dirs:
+                    dirs[:] = []
+                    continue
+                visited_dirs.add(dir_id)
+            except Exception:
+                pass
+
             for file in files:
                 # Cancelamento Cooperativo: checado antes de cada arquivo na descoberta
                 if cancel_token.is_cancelled():
