@@ -3,8 +3,8 @@ Aplicação Central LoTra (Local Translator & Reader Assistant) para Windows:
 Integração completa:
 - Detecção e Profiler de Hardware dinâmico (CPU AVX2, RAM Win32 API, GPU DirectML / CUDA).
 - Windows Media OCR nativo (WinRT DirectML assíncrono).
-- Pipeline Adaptativo de Tradução (Cache ACID em SQLite, Ollama LLM, Offline Translator).
-- Interface HUD Tooltip flutuante e Hotkey Listener global (Ctrl+Alt+T).
+- Pipeline 100% Local de Tradução (Cache ACID em SQLite, Ollama LLM, Offline Translator).
+- Interface HUD Tooltip flutuante com Times New Roman e 2 atalhos: [Alt + Q] (Seleção) e [Alt + W] (OCR).
 - Proteção anti-vazamento de memória e princípio Read-Only estrito.
 """
 
@@ -13,6 +13,7 @@ import sys
 import time
 import queue
 import threading
+import ctypes
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -26,7 +27,14 @@ from adaptive_engine_orchestrator import HardwareProfiler, AdaptiveEngineOrchest
 from document_context_vault import DocumentContextVault
 from ocr_engine import WindowsMediaOCREngine
 from translation_engine import TranslationPipeline
-from hud_tooltip import HUDTooltip, HotkeyListener, get_windows_clipboard_text, set_windows_clipboard_text
+from hud_tooltip import (
+    HUDTooltip,
+    HotkeyListener,
+    get_windows_clipboard_text,
+    set_windows_clipboard_text,
+    simulate_copy_selection,
+    normalize_text_spacing
+)
 from resource_utils import get_resource_path
 
 class LoTraApp:
@@ -95,22 +103,19 @@ class LoTraApp:
             "total_pipeline_ms": round(total_time, 2)
         }
 
-    def trigger_quick_translation_from_clipboard(self):
-        """Disparado via tecla de atalho ou chamada manual: lê o clipboard, traduz e exibe HUD."""
-        clip_text = get_windows_clipboard_text().strip()
-        if not clip_text:
-            print("[LoTra HUD] Área de transferência vazia.")
+    def _dispatch_translation(self, text: str):
+        """Processa e despacha tradução para o HUD de forma thread-safe."""
+        clean_text = normalize_text_spacing(text)
+        if not clean_text:
+            print("[LoTra HUD] Nenhuma seleção ou texto detectado.")
             return
 
-        res = self.translate_text(clip_text)
+        res = self.translate_text(clean_text)
 
-        # Se chamado a partir de uma thread secundária (listener), envia para a fila da UI principal
-        # para que todas as operações com Tkinter ocorram exclusivamente na thread da UI.
         if threading.current_thread() is not threading.main_thread():
             self._ui_queue.put(res)
             return
 
-        # Execução na thread principal (CLI direta ou testes)
         self.hud.show(
             translated_text=res["translated_text"],
             source_text=res["source_text"],
@@ -118,6 +123,84 @@ class LoTraApp:
             engine_name=res["engine_used"],
             timeout_sec=8.0
         )
+
+    def trigger_quick_translation_from_selection(self):
+        """
+        Disparado via [Alt + Q]:
+        1. Simula automaticamente a cópia (Ctrl+C) na janela ativa do Windows.
+        2. Normaliza quebras de linha duras de PDF em fluxo de parágrafo contínuo.
+        3. Traduz via motor local e exibe o HUD tooltip.
+        """
+        clip_text = simulate_copy_selection()
+        if not clip_text:
+            clip_text = get_windows_clipboard_text()
+        self._dispatch_translation(clip_text)
+
+    def trigger_quick_translation_from_clipboard(self):
+        """Disparado via leitura direta da área de transferência."""
+        clip_text = get_windows_clipboard_text()
+        self._dispatch_translation(clip_text)
+
+    def trigger_ocr_screen_snip(self):
+        """
+        Disparado via [Alt + W]:
+        Dispara a captura de tela nativa (ms-screenclip: do Windows),
+        aguarda o recorte do usuário no clipboard e executa OCR + tradução local.
+        """
+        threading.Thread(target=self._ocr_worker_task, daemon=True, name="LoTra_OCR_Worker").start()
+
+    def _ocr_worker_task(self):
+        from PIL import Image, ImageGrab
+        user32 = ctypes.windll.user32 if sys.platform == "win32" else None
+        seq_before = user32.GetClipboardSequenceNumber() if user32 else 0
+
+        # 1. Invoca o recortador de tela oficial do Windows (ms-screenclip:)
+        try:
+            if sys.platform == "win32":
+                ctypes.windll.shell32.ShellExecuteW(None, "open", "ms-screenclip:", None, None, 1)
+        except Exception as e:
+            print(f"[LoTra OCR Snip] Aviso ao iniciar ms-screenclip: {e}")
+
+        # 2. Aguarda até 15s pela imagem selecionada pelo usuário na área de transferência
+        deadline = time.perf_counter() + 15.0
+        grabbed_img: Optional[Image.Image] = None
+
+        while time.perf_counter() < deadline:
+            time.sleep(0.08)
+            if user32 and user32.GetClipboardSequenceNumber() != seq_before:
+                try:
+                    data = ImageGrab.grabclipboard()
+                    if isinstance(data, Image.Image):
+                        grabbed_img = data
+                        break
+                except Exception:
+                    pass
+
+        # 3. Fallback: se o usuário já possuía uma imagem no clipboard
+        if not grabbed_img:
+            try:
+                data = ImageGrab.grabclipboard()
+                if isinstance(data, Image.Image):
+                    grabbed_img = data
+            except Exception:
+                pass
+
+        if not grabbed_img:
+            print("[LoTra OCR Snip] Nenhum recorte ou imagem capturada.")
+            return
+
+        # 4. Executa OCR local nativo com buffers efêmeros
+        ocr_res = self.ocr_engine.recognize_pil_image(grabbed_img)
+        if not ocr_res.get("success") or not ocr_res.get("text"):
+            print("[LoTra OCR Snip] Nenhum texto legível encontrado pelo OCR.")
+            return
+
+        # 5. Normaliza quebras de linha e traduz localmente
+        clean_text = normalize_text_spacing(ocr_res["text"])
+        trans_res = self.translate_text(clean_text)
+        trans_res["engine_used"] = f"WinRT OCR ({ocr_res.get('inference_ms', 0):.0f}ms) + {trans_res['engine_used']}"
+
+        self._ui_queue.put(trans_res)
 
     def stop_hud_service(self):
         """Para o daemon HUD cooperativamente."""
@@ -128,12 +211,17 @@ class LoTraApp:
         VRAMManager.trim_process_memory()
 
     def start_hud_service(self):
-        """Inicia o daemon de segundo plano com escuta de atalho global."""
+        """Inicia o daemon de segundo plano com escuta estrita dos 2 atalhos globais."""
         print("[LoTra] Iniciando serviço LoTra HUD no Windows...")
-        print("[LoTra] Atalhos globais ativados: [Alt + Q] e [Ctrl + Alt + T]")
-        print("[LoTra] Dica: Selecione o texto no seu leitor de PDF/livro, copie (Ctrl+C) e pressione Alt+Q.")
+        print("[LoTra] Atalhos globais ativos: [Alt + Q] (Seleção) e [Alt + W] (OCR)")
+        print("[LoTra] Instruções de uso:")
+        print("  - [Alt + Q]: Selecione qualquer texto com o mouse e pressione Alt+Q (cópia automática ativada!).")
+        print("  - [Alt + W]: Pressione Alt+W para recortar área da tela e traduzir o texto reconhecido via OCR.")
         
-        self.hotkey_listener = HotkeyListener(callback=self.trigger_quick_translation_from_clipboard)
+        self.hotkey_listener = HotkeyListener(
+            callback=self.trigger_quick_translation_from_selection,
+            on_ocr_snip=self.trigger_ocr_screen_snip
+        )
         self.hotkey_listener.start()
         self._is_serving = True
 

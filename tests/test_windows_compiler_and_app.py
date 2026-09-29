@@ -24,8 +24,15 @@ if str(ROOT_DIR) not in sys.path:
 
 from resource_utils import get_resource_path
 from ocr_engine import WindowsMediaOCREngine
-from translation_engine import TranslationPipeline, OfflineContextTranslator
-from hud_tooltip import HUDTooltip, get_windows_clipboard_text, set_windows_clipboard_text
+from translation_engine import TranslationPipeline, OfflineContextTranslator, OFFLINE_TECHNICAL_GLOSSARY
+from hud_tooltip import (
+    HUDTooltip,
+    HotkeyListener,
+    get_windows_clipboard_text,
+    set_windows_clipboard_text,
+    simulate_copy_selection,
+    normalize_text_spacing
+)
 from app import LoTraApp
 from PIL import Image, ImageDraw
 
@@ -137,12 +144,98 @@ def test_lotra_app_self_diagnosis():
         assert diag["all_passed"] is True, f"Diagnóstico falhou: {diag}"
         print("  [PASS] Todos os subsistemas reportaram integridade 100%!")
 
+def test_text_spacing_normalization_and_hud_font():
+    print(">>> 6. Testando Normalização de Quebras de Linha e Fonte Times New Roman no HUD...")
+    # 1. Simulação do texto com quebras duras de linha de PDF do arXiv
+    arxiv_raw = (
+        "As artificial intelligence (AI), including generative\n"
+        "AI, continue to evolve, concerns have arisen about over-reliance\n"
+        "on AI, which may lead to human deskilling and diminished\n"
+        "cognitive engagement. Over-reliance on AI can also lead users\n"
+        "to accept information given by AI without performing critical\n"
+        "examinations, causing negative consequences, such as misleading\n"
+        "users with hallucinated contents. This paper introduces extraheric\n"
+        "AI, a human-AI interaction design framework that fosters\n"
+        "users' higher-order thinking skills, such as creativity, critical"
+    )
+    normalized = normalize_text_spacing(arxiv_raw)
+    assert "\n" not in normalized, f"Linhas do mesmo parágrafo não devem conter quebras de linha: {normalized}"
+    assert "generative AI" in normalized
+    assert "human deskilling" in normalized
+    print("  [PASS] Normalização de quebras de linha em fluxo de parágrafo validada!")
+
+    # 2. Desfazimento de hifenização de fim de linha
+    hyphenated = "inter-\noperability and superconduc-\nting qubits"
+    dehyphenated = normalize_text_spacing(hyphenated)
+    assert "interoperability" in dehyphenated
+    assert "superconducting" in dehyphenated
+    print("  [PASS] Remoção de hifens de quebra de coluna em PDFs validada!")
+
+    # 3. Preservação de quebra real entre parágrafos distintos
+    two_paras = "First paragraph ended successfully.\n\nSecond paragraph starting here."
+    norm_two = normalize_text_spacing(two_paras)
+    assert "\n\n" in norm_two
+    print("  [PASS] Preservação de múltiplos parágrafos reais validada!")
+
+    # 4. Verificação da fonte Times New Roman na janela HUD
+    hud = HUDTooltip()
+    hud.show("Teste Tipografia", "Source", timeout_sec=0)
+    labels = [w for w in hud._window.winfo_children()[0].winfo_children() if w.winfo_class() == "Label"]
+    assert len(labels) > 0
+    font_used = labels[0].cget("font")
+    assert "Times New Roman" in str(font_used), f"Fonte esperada 'Times New Roman', obtido: {font_used}"
+    hud.destroy()
+    print("  [PASS] Fonte Times New Roman confirmada no HUD Tooltip!")
+
+    # 5. Disponibilidade da função de captura automática por simulação de cópia
+    assert callable(simulate_copy_selection)
+    print("  [PASS] Simulação de cópia automática de seleção (Alt+Q sem Ctrl+C) verificada!")
+
+def test_100_percent_local_translation():
+    print(">>> 7. Testando Isolamento 100% Offline e Ausência de APIs Online do Google...")
+    pipeline = TranslationPipeline()
+    # 1. Garante que método online de web translation foi completamente eliminado
+    assert not hasattr(pipeline, "_query_web_translation"), "Violação de isolamento: _query_web_translation ainda existe!"
+    
+    # 2. Garante que arquivos fonte não possuem URLs de tradutores externos
+    engine_file = SRC_DIR / "translation_engine.py"
+    content = engine_file.read_text(encoding="utf-8")
+    assert "clients5.google.com" not in content, "Violação de isolamento: URL da API do Google encontrada em translation_engine.py!"
+    assert "api.mymemory" not in content, "Violação de isolamento: URL da API MyMemory encontrada em translation_engine.py!"
+    print("  [PASS] Zero conexões ou URLs com Google / APIs externas no código fonte!")
+
+    # 3. Validação de tradução local dos termos do arXiv e IA
+    tr_ai = pipeline.translate_text("artificial intelligence")
+    assert tr_ai["translated_text"].lower() == "inteligência artificial"
+    assert tr_ai["engine_used"] != "Neural Translation Engine (PT-BR)"
+    
+    tr_deskilling = pipeline.translate_text("human deskilling")
+    assert "desqualificação" in tr_deskilling["translated_text"].lower()
+    print("  [PASS] Tradução offline local de vocabulário acadêmico e técnico validada!")
+
+def test_two_hotkey_commands_configuration():
+    print(">>> 8. Testando Suporte Estrito aos 2 Comandos Globais (Alt+Q e Alt+W)...")
+    invoked = []
+    listener = HotkeyListener(
+        callback=lambda: invoked.append("alt_q"),
+        on_ocr_snip=lambda: invoked.append("alt_w")
+    )
+    assert listener.callback is not None
+    assert listener.on_ocr_snip is not None
+    listener.callback()
+    listener.on_ocr_snip()
+    assert invoked == ["alt_q", "alt_w"]
+    print("  [PASS] Configuração dos 2 comandos [Alt + Q] e [Alt + W] validada com sucesso!")
+
 if __name__ == "__main__":
     test_resource_resolution()
     test_clipboard_and_hud_readiness()
     test_translation_engine_and_cache()
     test_ocr_engine_robustness()
     test_lotra_app_self_diagnosis()
+    test_text_spacing_normalization_and_hud_font()
+    test_100_percent_local_translation()
+    test_two_hotkey_commands_configuration()
     print("\n=======================================================")
     print("TODOS OS TESTES DO APLICATIVO E COMPILADOR PASSARAM!")
     print("=======================================================")

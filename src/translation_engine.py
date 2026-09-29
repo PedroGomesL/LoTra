@@ -8,18 +8,19 @@ Módulo de Tradução Adaptativo do LoTra:
 
 import os
 import sys
+import re
 import json
 import time
 import urllib.request
 import urllib.error
-import urllib.parse
 from typing import Dict, Any, Optional
 
 from document_context_vault import DocumentContextVault
 from adaptive_engine_orchestrator import AdaptiveEngineOrchestrator, HardwareProfiler
 from platform_core import VRAMManager
+from hud_tooltip import normalize_text_spacing
 
-# Dicionário offline de termos técnicos, computação quântica, IA e expressões frequentes
+# Dicionário offline de termos técnicos, computação quântica, IA, pesquisa acadêmica e expressões frequentes
 OFFLINE_TECHNICAL_GLOSSARY = {
     "hello world": "olá mundo",
     "quantum scalability": "escalabilidade quântica",
@@ -44,17 +45,39 @@ OFFLINE_TECHNICAL_GLOSSARY = {
     "advance": "avanço",
     "artificial intelligence": "inteligência artificial",
     "generative ai": "ia generativa",
+    "generative": "generativa",
     "human tasks": "tarefas humanas",
     "reduce workloads": "reduzir cargas de trabalho",
     "augment capabilities": "aumentar capacidades",
     "over-reliance": "dependência excessiva",
     "over-use": "uso excessivo",
     "cognitive tasks": "tarefas cognitivas",
+    "cognitive engagement": "envolvimento cognitivo",
+    "diminished cognitive engagement": "diminuição do envolvimento cognitivo",
+    "human deskilling": "desqualificação humana",
     "deskilling": "desqualificação",
     "misinformation": "desinformação",
     "disinformation": "desinformação",
+    "hallucinated contents": "conteúdos alucinados",
+    "hallucinated content": "conteúdo alucinado",
     "hallucinated": "alucinado",
     "hallucination": "alucinação",
+    "human-ai interaction": "interação humano-ia",
+    "interaction design": "design de interação",
+    "higher-order thinking skills": "habilidades de pensamento de ordem superior",
+    "higher-order thinking": "pensamento de ordem superior",
+    "problem-solving": "resolução de problemas",
+    "critical examinations": "exames críticos",
+    "critical examination": "exame crítico",
+    "critical thinking": "pensamento crítico",
+    "cognitive load theory": "teoria da carga cognitiva",
+    "bloom's taxonomy": "taxonomia de bloom",
+    "human cognition": "cognição humana",
+    "interaction strategies": "estratégias de interação",
+    "evaluation methods": "métodos de avaliação",
+    "balanced partnership": "parceria equilibrada",
+    "alternative perspectives": "perspectivas alternativas",
+    "creativity": "criatividade",
     "unflinching": "inabalável",
     "serendipity": "serendipidade",
     "preposterous": "absurdo",
@@ -65,7 +88,7 @@ OFFLINE_TECHNICAL_GLOSSARY = {
 }
 
 class OfflineContextTranslator:
-    """Tradutor offline baseado em glossário contextual e termos comuns."""
+    """Tradutor offline 100% local baseado em glossário contextual, termos técnicos e expressões."""
     
     @classmethod
     def translate(cls, text: str, context_prompt: str = "") -> str:
@@ -86,10 +109,30 @@ class OfflineContextTranslator:
         # 2. Correspondência para termos compostos conhecidos
         for en, pt in sorted(OFFLINE_TECHNICAL_GLOSSARY.items(), key=lambda x: len(x[0]), reverse=True):
             if en == lower_clean:
+                if clean.isupper():
+                    return pt.upper()
+                elif clean[0].isupper():
+                    return pt.capitalize()
                 return pt
 
-        # Se for offline e não houver tradução direta disponível, não deforma o texto com substituições parciais
-        return clean
+        # 3. Substituição contextual de locuções e termos compostos reconhecidos
+        translated = clean
+        for en, pt in sorted(OFFLINE_TECHNICAL_GLOSSARY.items(), key=lambda x: len(x[0]), reverse=True):
+            if len(en) < 3:
+                continue
+            pattern = re.compile(rf'\b{re.escape(en)}\b', re.IGNORECASE)
+
+            def _repl(match):
+                matched = match.group(0)
+                if matched.isupper():
+                    return pt.upper()
+                elif matched[0].isupper():
+                    return pt.capitalize()
+                return pt
+
+            translated = pattern.sub(_repl, translated)
+
+        return translated
 
 class TranslationPipeline:
     """Pipeline completo de tradução coordenado por hardware e cache."""
@@ -128,79 +171,22 @@ class TranslationPipeline:
             return None
         return None
 
-    @staticmethod
-    def _query_web_translation(text: str) -> Optional[str]:
-        """Traduz texto de inglês para português brasileiro via serviço neural rápido e sem chave."""
-        clean = text.strip()
-        if not clean:
-            return None
-
-        # Tentativa 1: Google Translate Web Client (resposta em ~40-80ms)
-        try:
-            chunks = []
-            if len(clean) > 1000:
-                parts = clean.split("\n\n")
-                current = []
-                curr_len = 0
-                for p in parts:
-                    if curr_len + len(p) > 800 and current:
-                        chunks.append("\n\n".join(current))
-                        current = [p]
-                        curr_len = len(p)
-                    else:
-                        current.append(p)
-                        curr_len += len(p)
-                if current:
-                    chunks.append("\n\n".join(current))
-            else:
-                chunks = [clean]
-
-            translated_chunks = []
-            for ch in chunks:
-                url = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=en&tl=pt-BR&q=" + urllib.parse.quote(ch)
-                req = urllib.request.Request(url, headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                })
-                with urllib.request.urlopen(req, timeout=4.0) as resp:
-                    raw = resp.read().decode("utf-8")
-                    data = json.loads(raw)
-                    if isinstance(data, list) and data:
-                        translated_chunks.append(data[0])
-                    elif isinstance(data, str) and data:
-                        translated_chunks.append(data)
-            if translated_chunks:
-                return "\n\n".join(translated_chunks).strip()
-        except Exception:
-            pass
-
-        # Tentativa 2: MyMemory API Fallback
-        try:
-            url = "https://api.mymemory.translated.net/get?q=" + urllib.parse.quote(clean[:500]) + "&langpair=en|pt-BR"
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=4.0) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                res = data.get("responseData", {}).get("translatedText")
-                if res and res.strip() and not res.startswith("MYMEMORY WARNING"):
-                    return res.strip()
-        except Exception:
-            pass
-
-        return None
-
     def translate_text(self, 
                        text: str, 
                        doc_hash: str = "ad_hoc_query", 
                        page_num: int = 1,
                        target_sla_ms: float = 250.0) -> Dict[str, Any]:
         """
-        Executa tradução direta com:
-        1. Decisão de modelo baseada em hardware real.
-        2. Verificação de cache no DocumentContextVault (< 1ms).
-        3. Inferência via Ollama local, Web Neural Engine ou fallback offline.
-        4. Gravação no cache ACID.
-        5. Retorno estruturado com métricas e metadados.
+        Executa tradução 100% local com:
+        1. Normalização de espaçamento e quebras duras de linha de PDFs.
+        2. Decisão de modelo baseada em hardware real.
+        3. Verificação de cache ultrarrápido no DocumentContextVault (< 1ms).
+        4. Inferência local via Ollama LLM (Qwen 2.5 / Llama 3.2) se disponível.
+        5. Fallback 100% offline via LoTra Built-in Offline Translator (Glossário e Regras).
+        6. Gravação no cache ACID local em SQLite.
+        7. Retorno estruturado com métricas e metadados.
         """
-        raw_text = text.strip()
+        raw_text = normalize_text_spacing(text.strip())
         if not raw_text:
             return {
                 "source_text": "",
@@ -271,13 +257,7 @@ class TranslationPipeline:
         translated_result = self._query_ollama(ollama_model, prompt)
         engine_used = f"Ollama Local ({ollama_model})"
 
-        # 6. Tentativa 2: Web Neural Engine (alta qualidade, fluente em PT-BR)
-        if not translated_result:
-            translated_result = self._query_web_translation(raw_text)
-            if translated_result:
-                engine_used = "Neural Translation Engine (PT-BR)"
-
-        # 7. Tentativa 3: Fallback Offline se não houver rede nem Ollama
+        # 6. Fallback Offline: 100% autônomo e sem conexão de rede externa
         if not translated_result:
             translated_result = OfflineContextTranslator.translate(raw_text, context_prompt)
             engine_used = "LoTra Built-in Offline Translator"

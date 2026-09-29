@@ -13,9 +13,9 @@
 
 Ler livros técnicos, artigos acadêmicos ou ficção em inglês no computador costuma ser interrompido por um ciclo cansativo: encontrar uma palavra ou expressão desconhecida, alternar de janela (`Alt+Tab`), colar no tradutor web, esperar a resposta, ler e voltar para a leitura. Esse atrito quebra o **ritmo de leitura** (*flow state*).
 
-O **LoTra** foi concebido como um software executável autônomo para Windows (`.exe`), operando em segundo plano:
-1. **Modo Direto (`Alt+Q`)**: Selecione qualquer palavra, frase ou expressão em um PDF ou livro digital e visualize um HUD translúcido instantâneo ao lado do cursor com a tradução contextualizada e direta em Português do Brasil.
-2. **Modo OCR (`Alt+S`)**: Para livros escaneados, PDFs sem camada de texto ou imagens com diagramas técnicos, ative a mira de recorte: o motor extrai o texto em **menos de 30 ms** e exibe a tradução sem sair da página.
+O **LoTra** foi concebido como um software executável autônomo para Windows (`.exe`), operando 100% local e offline em segundo plano:
+1. **Tradução de Seleção (`Alt+Q`)**: Apenas selecione qualquer texto com o mouse em um leitor de PDF, navegador ou livro e pressione `Alt+Q`. O LoTra simula a cópia automaticamente (dispensando `Ctrl+C` manual), desfaz quebras de linha duras de PDF e exibe um HUD compacto com tipografia **Times New Roman**.
+2. **Comando de OCR (`Alt+W`)**: Pressione `Alt+W` para abrir o recortador de tela nativo (Windows Snipping) ou reconhecer imagens copiadas: o motor WinRT OCR extrai os caracteres com aceleração local por hardware e apresenta a tradução instantânea.
 
 ---
 
@@ -171,14 +171,13 @@ O compilador realiza automaticamente a verificação pós-compilação executand
 
 ---
 
-## ⌨️ Atalhos Padrão
+## ⌨️ Atalhos Globais (Exatamente 2 Comandos)
 
 | Atalho | Ação |
 | :---: | :--- |
-| `Ctrl + Alt + T` | Tradução instantânea do clipboard / seleção com overlay HUD |
-| `Alt + Q` | Tradução instantânea do texto selecionado na tela |
-| `Alt + S` | Abre a ferramenta de recorte para OCR em PDFs escaneados ou imagens |
-| `Esc` | Fecha o popup de tradução instantânea (HUD Tooltip) |
+| `Alt + Q` | **Tradução de Seleção**: Traduz o texto selecionado na tela com captura/cópia automática (dispensa Ctrl+C) |
+| `Alt + W` | **Comando de OCR**: Aciona recorte de tela (Windows Snipping) ou OCR em imagem copiada e exibe a tradução |
+| `Esc` | Fecha a janela flutuante do HUD Tooltip |
 
 ---
 

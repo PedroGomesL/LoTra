@@ -46,7 +46,7 @@ def main():
                "  LoTra.exe --ocr doc.png          # Extrai texto de imagem com Windows Media OCR\n"
                "  LoTra.exe --process doc.png      # OCR + Tradução ponta a ponta\n"
                "  LoTra.exe --test                 # Executa bateria de auto-testes e diagnóstico\n"
-               "  LoTra.exe --gui                  # Inicia serviço de segundo plano com HUD e atalho Ctrl+Alt+T\n"
+               "  LoTra.exe --gui                  # Inicia serviço de segundo plano com HUD e atalhos Alt+Q e Alt+W\n"
     )
 
     parser.add_argument("--profile", action="store_true", help="Inspeciona hardware real do sistema (CPU, RAM, GPU) e exibe tier recomendado")
@@ -54,7 +54,7 @@ def main():
     parser.add_argument("--ocr", type=str, metavar="IMAGE_PATH", help="Executa OCR nativo do Windows em um arquivo de imagem")
     parser.add_argument("--process", "-p", type=str, metavar="IMAGE_PATH", help="Executa OCR na imagem e traduz o texto extraído")
     parser.add_argument("--test", action="store_true", help="Executa bateria de auto-diagnóstico dos subsistemas")
-    parser.add_argument("--gui", "--hud", action="store_true", help="Inicia o HUD Tooltip com escuta do atalho global (Ctrl+Alt+T)")
+    parser.add_argument("--gui", "--hud", action="store_true", help="Inicia o HUD Tooltip com escuta dos 2 atalhos: Alt+Q (Seleção) e Alt+W (OCR)")
     parser.add_argument("--version", "-v", action="version", version=f"LoTra v{APP_VERSION}")
 
     args = parser.parse_args()

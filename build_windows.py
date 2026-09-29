@@ -45,12 +45,19 @@ def ensure_assets():
     print(f"  [OK] Script WinRT OCR localizado: {WIN_OCR_SCRIPT}")
 
 def clean_previous_builds():
-    """Limpa artefatos temporários de compilações anteriores com tratamento de locks."""
+    """Limpa artefatos temporários de compilações anteriores com encerramento de processos travados."""
     print(">>> 2. Limpando artefatos de compilações anteriores...")
+    if sys.platform == "win32":
+        try:
+            subprocess.run(["taskkill", "/F", "/IM", "LoTra.exe"], capture_output=True)
+            time.sleep(0.5)
+        except Exception:
+            pass
+
     for p in [BUILD_DIR, DIST_DIR]:
         if p.exists():
             removed = False
-            for attempt in range(3):
+            for attempt in range(5):
                 try:
                     shutil.rmtree(p)
                     print(f"  [OK] Diretório removido: {p}")

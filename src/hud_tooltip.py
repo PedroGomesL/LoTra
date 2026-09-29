@@ -1,14 +1,17 @@
 """
 HUD Tooltip e Hotkey Listener do LoTra para Windows:
 - Overlay flutuante estilizado (Heads-Up Display) sobreposto a qualquer aplicação ou leitor PDF.
-- Escuta de atalho global do Windows (Ctrl+Alt+T) via Win32 RegisterHotKey ou polling GetAsyncKeyState.
-- Captura de texto/imagem da área de transferência ou seleção ativa.
-- Exibição de texto original, tradução, tempo de latência e motor selecionado.
-- Fechamento com Esc, clique fora, botão de fechar ou timeout configurável.
+- Suporte estrito a 2 comandos:
+    1. [Alt + Q]: Tradução de texto selecionado com simulação automática de cópia (dispensa Ctrl+C prévio).
+    2. [Alt + W]: OCR de captura/recorte de tela (Windows Snipping) ou imagem do clipboard.
+- Tipografia serifada elegante em Times New Roman.
+- Normalização inteligente de quebras de linha duras de PDFs em fluxo contínuo de parágrafos.
+- Fechamento com Esc, clique fora, clique no HUD ou timeout configurável.
 """
 
 import os
 import sys
+import re
 import time
 import threading
 import ctypes
@@ -21,8 +24,13 @@ MOD_CONTROL = 0x0002
 MOD_SHIFT = 0x0004
 MOD_WIN = 0x0008
 WM_HOTKEY = 0x0312
-VK_T = 0x54
 VK_ESCAPE = 0x1B
+VK_Q = 0x51
+VK_W = 0x57
+VK_C = 0x43
+VK_CONTROL = 0x11
+VK_MENU = 0x12  # ALT key
+KEYEVENTF_KEYUP = 0x0002
 
 def enable_dpi_awareness():
     """Habilita conscientização de DPI por monitor no Windows para evitar distorção e coordenadas erradas."""
@@ -84,6 +92,10 @@ def _setup_win32_prototypes():
     u32.GetAsyncKeyState.argtypes = [ctypes.c_int]
     u32.GetCursorPos.restype = ctypes.c_bool
     u32.GetCursorPos.argtypes = [ctypes.POINTER(ctypes.wintypes.POINT)]
+    u32.keybd_event.restype = None
+    u32.keybd_event.argtypes = [ctypes.c_byte, ctypes.c_byte, ctypes.c_uint, ctypes.c_size_t]
+    u32.GetClipboardSequenceNumber.restype = ctypes.c_uint
+    u32.GetClipboardSequenceNumber.argtypes = []
 
 enable_dpi_awareness()
 _setup_win32_prototypes()
@@ -157,6 +169,92 @@ def set_windows_clipboard_text(text: str) -> bool:
     finally:
         user32.CloseClipboard()
 
+def normalize_text_spacing(text: str) -> str:
+    """
+    Normaliza texto extraído de PDFs, navegadores e leitores de documentos:
+    - Converte quebras de linha duras de colunas de PDF em fluxo contínuo e fluído.
+    - Desfaz hifenizações de final de linha (ex: 'over-\\nreliance' -> 'over-reliance', 'inter-\\noperability' -> 'interoperability').
+    - Preserva parágrafos legítimos (linhas separadas por linha em branco onde a anterior termina com pontuação).
+    - Preserva itens de listas com marcadores e numerações.
+    - Remove espaços duplicados e evita espaçamentos verticais desnecessários no HUD.
+    """
+    if not text:
+        return ""
+
+    t = text.replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not t:
+        return ""
+
+    # Desfaz hifenização de quebra de linha de PDFs
+    t = re.sub(r'(\b[a-zA-Z]+)-\n\s*([a-z][a-zA-Z]*)', r'\1\2', t)
+    t = re.sub(r'(\b[a-zA-Z]+)-\n\s*([A-Z][a-zA-Z]*)', r'\1-\2', t)
+
+    raw_lines = [line.strip() for line in t.split("\n")]
+    sentence_end = ('.', '!', '?', ':', ';')
+    list_marker = re.compile(r'^(\d+[\.\)]|[\u2022\u2023\u25E6\u2043\u2219\*\-\+])\s+')
+
+    paragraphs = []
+    current_tokens = []
+
+    for line in raw_lines:
+        if not line:
+            if current_tokens:
+                combined = " ".join(current_tokens).strip()
+                if combined and combined[-1] in sentence_end:
+                    paragraphs.append(combined)
+                    current_tokens = []
+            continue
+
+        if list_marker.match(line):
+            if current_tokens:
+                paragraphs.append(" ".join(current_tokens).strip())
+                current_tokens = []
+            current_tokens.append(line)
+        else:
+            current_tokens.append(line)
+
+    if current_tokens:
+        paragraphs.append(" ".join(current_tokens).strip())
+
+    result = "\n\n".join(p for p in paragraphs if p)
+    result = re.sub(r'[ \t]+', ' ', result).strip()
+    return result
+
+def simulate_copy_selection(timeout_sec: float = 0.25) -> str:
+    """
+    Simula o comando de cópia (Ctrl+C) na janela ativa do Windows
+    para capturar o texto selecionado pelo usuário sem que seja necessário
+    pressionar Ctrl+C manualmente antes de Alt+Q.
+    """
+    if sys.platform != "win32":
+        return ""
+
+    user32 = ctypes.windll.user32
+    seq_before = user32.GetClipboardSequenceNumber()
+
+    # 1. Garante que a tecla Alt esteja liberada para não interferir na combinação
+    user32.keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0)
+    time.sleep(0.03)
+
+    # 2. Emite o comando Ctrl+C
+    user32.keybd_event(VK_CONTROL, 0, 0, 0)
+    time.sleep(0.015)
+    user32.keybd_event(VK_C, 0, 0, 0)
+    time.sleep(0.02)
+    user32.keybd_event(VK_C, 0, KEYEVENTF_KEYUP, 0)
+    time.sleep(0.01)
+    user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
+
+    # 3. Aguarda a aplicação ativa atualizar o clipboard
+    deadline = time.perf_counter() + timeout_sec
+    while time.perf_counter() < deadline:
+        time.sleep(0.02)
+        if user32.GetClipboardSequenceNumber() != seq_before:
+            break
+
+    # 4. Retorna o texto capturado
+    return get_windows_clipboard_text()
+
 class HUDTooltip:
     """Gerenciador da janela flutuante overlay (HUD Tooltip) em Tkinter."""
     
@@ -200,22 +298,35 @@ class HUDTooltip:
         text_primary = "#cdd6f4"
 
         # Frame único minimalista com borda sutil e preenchimento confortável
-        main_frame = tk.Frame(window, bg=bg_dark, highlightbackground=border_color, highlightthickness=1, padx=12, pady=8)
+        main_frame = tk.Frame(window, bg=bg_dark, highlightbackground=border_color, highlightthickness=1, padx=14, pady=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        trans_display = translated_text.strip()
-        # Se for texto curto (palavra ou frase pequena), mantém linha única compacta; se for longo, quebra em 420px
-        wrap_width = 420 if len(trans_display) > 40 else 0
+        # Normaliza o texto traduzido para evitar quebras abruptas e espaços em branco desnecessários
+        trans_display = normalize_text_spacing(translated_text)
+        trans_display = re.sub(r'\n\s*\n+', '\n\n', trans_display.strip())
 
-        # Único elemento: Texto traduzido limpo, sem ícones, cabeçalhos ou dados adicionais
+        # Ajuste dinâmico de largura de quebra para garantir tipografia e proporções ideais
+        char_len = len(trans_display)
+        if char_len < 45 and "\n" not in trans_display:
+            wrap_width = 0  # Texto curto em linha única
+        elif char_len < 160:
+            wrap_width = 440
+        elif char_len < 450:
+            wrap_width = 540
+        else:
+            wrap_width = 620
+
+        # Texto traduzido com fonte Times New Roman serifada, elegante e compacta
         trans_label = tk.Label(
             main_frame,
             text=trans_display,
-            font=("Segoe UI", 10),
+            font=("Times New Roman", 11),
             fg=text_primary,
             bg=bg_dark,
             wraplength=wrap_width,
-            justify=tk.LEFT
+            justify=tk.LEFT,
+            padx=2,
+            pady=2
         )
         trans_label.pack(anchor="w")
 
@@ -297,10 +408,17 @@ class HUDTooltip:
             self._root = None
 
 class HotkeyListener:
-    """Escutador de tecla de atalho nativo para Windows (Win32 RegisterHotKey e GetAsyncKeyState)."""
+    """
+    Escutador de teclas de atalho nativo para Windows:
+    Registra estritamente os 2 comandos globais suportados:
+    1. [Alt + Q]: Tradução de texto selecionado.
+    2. [Alt + W]: OCR de tela / snipping ou imagem.
+    (Qualquer atalho redundante anterior, como Ctrl+Alt+T, foi desativado).
+    """
 
-    def __init__(self, callback: Callable[[], None]):
-        self.callback = callback
+    def __init__(self, callback: Callable[[], None], on_ocr_snip: Optional[Callable[[], None]] = None):
+        self.callback = callback  # Disparado com Alt+Q (Seleção)
+        self.on_ocr_snip = on_ocr_snip  # Disparado com Alt+W (OCR)
         self.running = False
         self._thread: Optional[threading.Thread] = None
 
@@ -318,50 +436,61 @@ class HotkeyListener:
 
     def _hotkey_loop(self):
         user32 = ctypes.windll.user32
-        HOTKEY_ID_T = 101
-        HOTKEY_ID_Q = 102
+        HOTKEY_ID_Q = 101
+        HOTKEY_ID_W = 102
         VK_Q = 0x51
-        VK_T = 0x54
+        VK_W = 0x57
 
-        # Registra ambos os atalhos: Ctrl+Alt+T e Alt+Q
-        reg_t = user32.RegisterHotKey(0, HOTKEY_ID_T, (MOD_CONTROL | MOD_ALT), VK_T)
+        # Registra estritamente os 2 atalhos: Alt+Q e Alt+W
         reg_q = user32.RegisterHotKey(0, HOTKEY_ID_Q, MOD_ALT, VK_Q)
+        reg_w = user32.RegisterHotKey(0, HOTKEY_ID_W, MOD_ALT, VK_W)
 
-        if reg_t or reg_q:
+        if reg_q or reg_w:
             msg = ctypes.wintypes.MSG()
             try:
                 while self.running:
                     # PeekMessageW sem bloquear indefinidamente
-                    if user32.PeekMessageW(ctypes.byref(msg), 0, 0, 0, 1): # PM_REMOVE
-                        if msg.message == WM_HOTKEY and msg.wParam in (HOTKEY_ID_T, HOTKEY_ID_Q):
-                            try:
-                                self.callback()
-                            except Exception as e:
-                                print(f"[HotkeyListener Error] {e}")
+                    if user32.PeekMessageW(ctypes.byref(msg), 0, 0, 0, 1):  # PM_REMOVE
+                        if msg.message == WM_HOTKEY:
+                            if msg.wParam == HOTKEY_ID_Q and self.callback:
+                                try:
+                                    self.callback()
+                                except Exception as e:
+                                    print(f"[HotkeyListener Alt+Q Error] {e}")
+                            elif msg.wParam == HOTKEY_ID_W and self.on_ocr_snip:
+                                try:
+                                    self.on_ocr_snip()
+                                except Exception as e:
+                                    print(f"[HotkeyListener Alt+W Error] {e}")
                         user32.TranslateMessage(ctypes.byref(msg))
                         user32.DispatchMessageW(ctypes.byref(msg))
                     time.sleep(0.04)
             finally:
-                if reg_t:
-                    user32.UnregisterHotKey(0, HOTKEY_ID_T)
                 if reg_q:
                     user32.UnregisterHotKey(0, HOTKEY_ID_Q)
+                if reg_w:
+                    user32.UnregisterHotKey(0, HOTKEY_ID_W)
         else:
             # Fallback para polling via GetAsyncKeyState (não requer registro exclusivo)
-            VK_CONTROL = 0x11
-            VK_MENU = 0x12 # ALT
+            VK_MENU = 0x12  # ALT
             while self.running:
-                ctrl_down = (user32.GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0
                 alt_down = (user32.GetAsyncKeyState(VK_MENU) & 0x8000) != 0
-                t_down = (user32.GetAsyncKeyState(VK_T) & 0x8000) != 0
                 q_down = (user32.GetAsyncKeyState(VK_Q) & 0x8000) != 0
+                w_down = (user32.GetAsyncKeyState(VK_W) & 0x8000) != 0
 
-                # Dispara se [Alt + Q] OU [Ctrl + Alt + T] forem pressionados
-                if (alt_down and q_down) or (ctrl_down and alt_down and t_down):
+                # Dispara se [Alt + Q] for pressionado
+                if alt_down and q_down:
+                    if self.callback:
+                        try:
+                            self.callback()
+                        except Exception as e:
+                            print(f"[Hotkey Polling Alt+Q Error] {e}")
+                    time.sleep(0.4)
+                # Dispara se [Alt + W] for pressionado
+                elif alt_down and w_down and self.on_ocr_snip:
                     try:
-                        self.callback()
+                        self.on_ocr_snip()
                     except Exception as e:
-                        print(f"[Hotkey Polling Error] {e}")
-                    # Espera soltar tecla para não disparar em loop contínuo
+                        print(f"[Hotkey Polling Alt+W Error] {e}")
                     time.sleep(0.4)
                 time.sleep(0.05)
