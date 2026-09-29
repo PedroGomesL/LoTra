@@ -120,6 +120,7 @@ class DocumentContextVault:
             conn = sqlite3.connect(self.db_path, timeout=15.0)
             conn.isolation_level = None
             try:
+                conn.execute("PRAGMA auto_vacuum = INCREMENTAL;")
                 conn.execute("VACUUM;")
             finally:
                 conn.close()
@@ -173,27 +174,30 @@ class DocumentContextVault:
         evicted_count = 0
         evicted_thumbs = 0
 
-        if sizes["total_bytes"] > quota_bytes:
+        max_rounds = 5
+        while sizes["total_bytes"] > quota_bytes and max_rounds > 0:
+            max_rounds -= 1
             self.checkpoint_wal(mode="TRUNCATE")
             sizes = self.get_storage_size_bytes()
+            if sizes["total_bytes"] <= quota_bytes:
+                break
 
-            if sizes["total_bytes"] > quota_bytes:
-                with self._get_connection() as conn:
-                    cur = conn.cursor()
-                    cur.execute("SELECT count(*) FROM translation_cache")
-                    total_cached = cur.fetchone()[0]
-                    if total_cached > 0:
-                        limit_evict = max(1, total_cached // 4)
-                        cur.execute(
-                            "DELETE FROM translation_cache WHERE cache_key IN "
-                            "(SELECT cache_key FROM translation_cache ORDER BY COALESCE(last_accessed_at, created_at) ASC LIMIT ?)",
-                            (limit_evict,)
-                        )
-                        evicted_count = cur.rowcount
+            with self._get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT count(*) FROM translation_cache")
+                total_cached = cur.fetchone()[0]
+                if total_cached > 0:
+                    limit_evict = max(1, total_cached // 4)
+                    cur.execute(
+                        "DELETE FROM translation_cache WHERE cache_key IN "
+                        "(SELECT cache_key FROM translation_cache ORDER BY COALESCE(last_accessed_at, created_at) ASC LIMIT ?)",
+                        (limit_evict,)
+                    )
+                    evicted_count += cur.rowcount
 
-                self.vacuum_db(incremental=True)
-                self.checkpoint_wal(mode="TRUNCATE")
-                sizes = self.get_storage_size_bytes()
+            self.vacuum_db(incremental=True)
+            self.checkpoint_wal(mode="TRUNCATE")
+            sizes = self.get_storage_size_bytes()
 
             # Descarte de thumbnails antigas se ainda estiver acima da cota combinada
             if sizes["total_bytes"] > quota_bytes:
@@ -343,6 +347,29 @@ class DocumentContextVault:
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_trans_lru ON translation_cache(last_accessed_at);")
             except Exception:
                 pass
+
+        # Garante que o banco opere com auto_vacuum = INCREMENTAL (modo 2) para permitir liberação de páginas
+        is_incremental = False
+        if os.path.exists(self.db_path):
+            with self._get_connection() as conn:
+                try:
+                    cur = conn.cursor()
+                    cur.execute("PRAGMA auto_vacuum;")
+                    row = cur.fetchone()
+                    if row and row[0] == 2:
+                        is_incremental = True
+                except Exception:
+                    pass
+
+            if not is_incremental:
+                try:
+                    conv_conn = sqlite3.connect(self.db_path, timeout=15.0)
+                    conv_conn.isolation_level = None
+                    conv_conn.execute("PRAGMA auto_vacuum = INCREMENTAL;")
+                    conv_conn.execute("VACUUM;")
+                    conv_conn.close()
+                except Exception:
+                    pass
 
     def _migration_1_initial(self, conn: sqlite3.Connection):
         conn.executescript("""

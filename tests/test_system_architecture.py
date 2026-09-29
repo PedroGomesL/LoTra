@@ -129,6 +129,10 @@ def test_document_context_vault():
         assert vac_inc["success"] is True
         assert vac_inc["mode"] == "incremental"
 
+        with vault._get_connection() as conn:
+            auto_vac = conn.execute("PRAGMA auto_vacuum;").fetchone()[0]
+            assert auto_vac == 2, f"auto_vacuum deve ser 2 (INCREMENTAL), obteve {auto_vac}"
+
         vac_res = vault.vacuum_db()
         assert vac_res["success"] is True
 
@@ -323,6 +327,16 @@ def test_translation_engine_onnx_and_fallback():
         res_cache = pipeline.translate_text("artificial intelligence and machine learning")
         assert res_cache["cache_hit"] is True
         assert res_cache["engine_used"] == "DocumentContextVault Cache (ACID)"
+
+        # Nível 3: Testa acionamento do motor ONNX quando disponível
+        class MockNeuralTranslator:
+            def translate_text(self, text):
+                return "Tradução Neural ONNX: redes neurais convolucionais"
+
+        pipeline.onnx_engine.set_custom_backend(translator=MockNeuralTranslator())
+        res_onnx = pipeline.translate_text("convolutional neural networks")
+        assert "Tradução Neural ONNX" in res_onnx["translated_text"]
+        assert "ONNX Neural Engine" in res_onnx["engine_used"]
 
     print("[PASS] Hierarquia de Fallback e ONNXTranslationEngine validados com sucesso!")
 

@@ -10,9 +10,25 @@ Módulo de Recorte de Tela Nativo do LoTra (NativeScreenSnipper):
 import os
 import sys
 import time
+import ctypes
 import tkinter as tk
 from typing import Optional, Callable, Tuple
 from PIL import Image, ImageGrab
+
+def get_virtual_screen_geometry() -> Tuple[int, int, int, int]:
+    """Retorna (vx, vy, vw, vh) cobrindo todo o desktop virtual em múltiplos monitores."""
+    if sys.platform == "win32":
+        try:
+            u32 = ctypes.windll.user32
+            vx = u32.GetSystemMetrics(76)  # SM_XVIRTUALSCREEN
+            vy = u32.GetSystemMetrics(77)  # SM_YVIRTUALSCREEN
+            vw = u32.GetSystemMetrics(78)  # SM_CXVIRTUALSCREEN
+            vh = u32.GetSystemMetrics(79)  # SM_CYVIRTUALSCREEN
+            if vw > 0 and vh > 0:
+                return (vx, vy, vw, vh)
+        except Exception:
+            pass
+    return (0, 0, 1920, 1080)
 
 class NativeScreenSnipper:
     """Gerenciador do overlay nativo de recorte de tela."""
@@ -23,6 +39,8 @@ class NativeScreenSnipper:
         self._canvas: Optional[tk.Canvas] = None
         self._start_x: int = 0
         self._start_y: int = 0
+        self._start_canv_x: int = 0
+        self._start_canv_y: int = 0
         self._rect_id: Optional[int] = None
         self._is_snipping: bool = False
         self._on_snip_callback: Optional[Callable[[Image.Image, Tuple[int, int]], None]] = None
@@ -59,10 +77,9 @@ class NativeScreenSnipper:
         window.overrideredirect(True)
         window.attributes("-topmost", True)
 
-        # Configura dimensões completas da tela
-        screen_w = window.winfo_screenwidth()
-        screen_h = window.winfo_screenheight()
-        window.geometry(f"{screen_w}x{screen_h}+0+0")
+        # Configura dimensões completas da tela e desktop virtual multi-monitor
+        vx, vy, vw, vh = get_virtual_screen_geometry()
+        window.geometry(f"{vw}x{vh}+{vx}+{vy}")
 
         # Opacidade do overlay (escurece levemente o fundo para focar a seleção)
         try:
@@ -92,9 +109,8 @@ class NativeScreenSnipper:
         window.update_idletasks()
         window.focus_force()
 
-    def cancel(self):
-        """Cancela instantaneamente o recorte (< 5ms) e notifica o callback se fornecido."""
-        t0 = time.perf_counter()
+    def _close_overlay(self):
+        """Fecha o overlay e reseta referências internas sem disparar callback de cancelamento."""
         self._is_snipping = False
         if self._window is not None:
             try:
@@ -104,6 +120,10 @@ class NativeScreenSnipper:
             self._window = None
             self._canvas = None
 
+    def cancel(self):
+        """Cancela instantaneamente o recorte (< 5ms) e notifica o callback se fornecido."""
+        t0 = time.perf_counter()
+        self._close_overlay()
         if self._on_cancel_callback:
             try:
                 self._on_cancel_callback()
@@ -112,31 +132,29 @@ class NativeScreenSnipper:
         self._dismiss_start_time = (time.perf_counter() - t0) * 1000.0
 
     def _on_button_press(self, event):
-        self._start_x = self._window.winfo_pointerx()
-        self._start_y = self._window.winfo_pointery()
-        # Converte para coordenadas locais do canvas
-        canv_x = self._canvas.canvasx(event.x)
-        canv_y = self._canvas.canvasy(event.y)
-        self._rect_id = self._canvas.create_rectangle(
-            canv_x, canv_y, canv_x, canv_y,
-            outline="#89b4fa",
-            width=2,
-            fill="#313244",
-            stipple="gray25" if sys.platform == "win32" else ""
-        )
+        self._start_x = self._window.winfo_pointerx() if self._window else event.x
+        self._start_y = self._window.winfo_pointery() if self._window else event.y
+        self._start_canv_x = self._canvas.canvasx(event.x) if self._canvas else event.x
+        self._start_canv_y = self._canvas.canvasy(event.y) if self._canvas else event.y
+        if self._canvas:
+            self._rect_id = self._canvas.create_rectangle(
+                self._start_canv_x, self._start_canv_y, self._start_canv_x, self._start_canv_y,
+                outline="#89b4fa",
+                width=2,
+                fill="#313244",
+                stipple="gray25" if sys.platform == "win32" else ""
+            )
 
     def _on_mouse_drag(self, event):
         if self._rect_id and self._canvas:
             cur_x = self._canvas.canvasx(event.x)
             cur_y = self._canvas.canvasy(event.y)
-            start_canv_x = self._start_x - self._window.winfo_rootx()
-            start_canv_y = self._start_y - self._window.winfo_rooty()
-            self._canvas.coords(self._rect_id, start_canv_x, start_canv_y, cur_x, cur_y)
+            self._canvas.coords(self._rect_id, self._start_canv_x, self._start_canv_y, cur_x, cur_y)
 
     def _on_button_release(self, event):
-        end_x = self._window.winfo_pointerx()
-        end_y = self._window.winfo_pointery()
-        self.cancel()
+        end_x = self._window.winfo_pointerx() if self._window else event.x
+        end_y = self._window.winfo_pointery() if self._window else event.y
+        self._close_overlay()
 
         # Coordenadas ordenadas do retângulo de seleção
         x1 = min(self._start_x, end_x)
@@ -146,6 +164,11 @@ class NativeScreenSnipper:
 
         # Se a área for menor que 5x5 pixels, considera apenas clique acidental
         if (x2 - x1) < 5 or (y2 - y1) < 5:
+            if self._on_cancel_callback:
+                try:
+                    self._on_cancel_callback()
+                except Exception:
+                    pass
             return
 
         bbox = (x1, y1, x2, y2)

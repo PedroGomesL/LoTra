@@ -259,44 +259,125 @@ class OfflineContextTranslator:
 
 class ONNXTranslationEngine:
     """
-    Motor local de tradução neural autônomo baseado em ONNX Runtime / DirectML e SentencePiece.
+    Motor local de tradução neural autônomo baseado em ONNX Runtime / DirectML, CTranslate2 e SentencePiece.
     Projetado para MarianMT / Opus-MT (77M parâmetros) quantizado (~45MB) operando 100% offline.
     """
 
     def __init__(self, model_dir: Optional[str] = None):
         self.model_dir = Path(model_dir) if model_dir else (Path(os.environ.get("LOCALAPPDATA", "")) / "LoTra" / "models")
         self._session = None
+        self._translator = None
         self._tokenizer = None
         self._available: Optional[bool] = None
 
     def is_available(self) -> bool:
-        """Verifica se os arquivos do modelo ONNX e runtime estão disponíveis no sistema."""
+        """Verifica se os arquivos do modelo e runtime (ONNX ou CTranslate2) estão disponíveis no sistema."""
         if self._available is not None:
             return self._available
-        model_path = self.model_dir / "opus-mt-en-pt.onnx"
-        if not model_path.exists():
+
+        ct2_model = self.model_dir / "model.bin"
+        onnx_model = self.model_dir / "opus-mt-en-pt.onnx"
+        
+        has_model = ct2_model.exists() or onnx_model.exists()
+        if not has_model and self._translator is None and self._session is None:
             self._available = False
             return False
+
+        if self._translator is not None or self._session is not None:
+            self._available = True
+            return True
+
+        try:
+            import ctranslate2
+            self._available = True
+            return True
+        except ImportError:
+            pass
+
         try:
             import onnxruntime
             self._available = True
+            return True
         except ImportError:
-            self._available = False
-        return self._available
+            pass
+
+        self._available = False
+        return False
+
+    def set_custom_backend(self, translator=None, session=None, tokenizer=None):
+        """Permite injeção de sessão/tradutor pré-carregado ou mock para testes automatizados."""
+        self._translator = translator
+        self._session = session
+        self._tokenizer = tokenizer
+        self._available = True
 
     def translate(self, text: str) -> Optional[str]:
-        """Executa tradução neural direta via ONNX se disponível."""
+        """Executa tradução neural direta via CTranslate2 ou ONNX Runtime se disponível."""
         if not self.is_available():
             return None
+
+        # 1. Backend CTranslate2 (MarianMT quantizado int8)
+        if self._translator is not None or (self.model_dir / "model.bin").exists():
+            try:
+                if self._translator is None:
+                    import ctranslate2
+                    self._translator = ctranslate2.Translator(str(self.model_dir), device="auto")
+                
+                if hasattr(self._translator, "translate_text"):
+                    return self._translator.translate_text(text)
+
+                tokens = None
+                if self._tokenizer:
+                    tokens = self._tokenizer.encode(text, out_type=str)
+                else:
+                    sp_model_file = self.model_dir / "source.spm"
+                    if sp_model_file.exists():
+                        try:
+                            import sentencepiece as spm
+                            sp = spm.SentencePieceProcessor()
+                            sp.load(str(sp_model_file))
+                            tokens = sp.encode(text, out_type=str)
+                        except Exception:
+                            pass
+
+                if tokens is not None and hasattr(self._translator, "translate_batch"):
+                    results = self._translator.translate_batch([tokens])
+                    target_tokens = results[0].hypotheses[0]
+                    target_spm = self.model_dir / "target.spm"
+                    if target_spm.exists():
+                        try:
+                            import sentencepiece as spm
+                            sp_t = spm.SentencePieceProcessor()
+                            sp_t.load(str(target_spm))
+                            return sp_t.decode(target_tokens)
+                        except Exception:
+                            pass
+                    return " ".join(target_tokens).replace(" ", " ").strip()
+            except Exception:
+                pass
+
+        # 2. Backend ONNX Runtime (DirectML / CPU)
         try:
-            import onnxruntime as ort
-            if self._session is None:
+            if self._session is None and (self.model_dir / "opus-mt-en-pt.onnx").exists():
+                import onnxruntime as ort
                 model_path = str(self.model_dir / "opus-mt-en-pt.onnx")
                 providers = ["DirectMLExecutionProvider", "CPUExecutionProvider"]
                 self._session = ort.InferenceSession(model_path, providers=providers)
-            return None
+
+            if self._session is not None:
+                if hasattr(self._session, "translate"):
+                    return self._session.translate(text)
+                if hasattr(self._session, "run_translation"):
+                    return self._session.run_translation(text)
+                if self._tokenizer:
+                    inputs = self._tokenizer(text)
+                    outputs = self._session.run(None, inputs)
+                    if hasattr(self._tokenizer, "decode"):
+                        return self._tokenizer.decode(outputs[0])
         except Exception:
-            return None
+            pass
+
+        return None
 
 class TranslationPipeline:
     """Pipeline completo de tradução coordenado por hardware e cache."""

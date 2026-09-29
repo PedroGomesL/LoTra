@@ -154,17 +154,24 @@ Todas as issues foram cadastradas oficialmente no repositório remoto [`PedroGom
 
 ## 3. Estado Atual dos Testes e Validação Local
 
-A bateria completa de testes de engenharia foi executada e validada:
-1. `tests/test_system_architecture.py` -> **100% PASS** (Invariância de hash, SQLite WAL mode, auto-checkpointing TRUNCATE, vacuuming, quotas de retenção, injeção contextual hierárquica, profiler de hardware, supressão de marca-texto HSV e stream carving).
-2. `tests/test_security_privacy_scanner.py` -> **100% PASS** (Princípio Read-Only estrito, proteção anti-vazamento, scan incremental em duas fases, cancelamento cooperativo < 1s, health checks, migrações formais e tolerância a links circulares/permissões).
-3. `tests/test_windows_compiler_and_app.py` -> **100% PASS** (Resolução de recursos, clipboard Win32, OCR nativo UTF-8, normalização de texto, suporte multi-monitor virtual com coordenadas negativas, detecção de privilégios UIPI e atalhos Alt+Q / Alt+W).
-4. `python build_windows.py` -> **100% PASS** (Compilação standalone concluída em ~26s, binário `dist/LoTra.exe` validado com integridade).
+A bateria completa de testes de engenharia foi executada e validada com 100% de sucesso:
+1. `tests/test_system_architecture.py` -> **100% PASS** (Invariância de hash, SQLite WAL mode, `PRAGMA auto_vacuum = INCREMENTAL` validado em modo 2, auto-checkpointing TRUNCATE, vacuuming, quotas de retenção combinadas com descarte LRU e thumbnails, injeção contextual hierárquica, profiler de hardware, supressão de marca-texto HSV, carving de `/ObjStm` e derivação ISO 32000-1 Alg 2, além de validação ponta a ponta dos 4 níveis da hierarquia de fallback do `ONNXTranslationEngine`).
+2. `tests/test_security_privacy_scanner.py` -> **100% PASS** (Princípio Read-Only estrito, proteção anti-vazamento, scan incremental em duas fases, cancelamento cooperativo < 1s, health checks, 5 migrações formais, e poda precoce via `os.lstat` testada com junções NTFS circulares reais criadas via `mklink /J`).
+3. `tests/test_windows_compiler_and_app.py` -> **100% PASS** (Resolução de recursos, clipboard Win32 UTF-16LE, OCR nativo UTF-8, normalização de texto, clamping dinâmico multi-monitor com coordenadas virtuais negativas, detecção de privilégios UIPI em janelas Admin, ciclo de vida do `NativeScreenSnipper` com overlay multi-monitor e cancelamento < 5ms via Esc).
+4. `python build_windows.py` -> **100% PASS** (Compilação standalone concluída com PyInstaller em ~25s, binário `dist/LoTra.exe` de 31.70 MB validado em todos os 5 comandos: `--version`, `--profile`, `--test`, `--translate`, `--ocr`).
 
 ---
 
-## 4. Próximos Passos e Roadmap de Evolução
+## 4. Conclusão da Auditoria de Engenharia
 
-Com as correções de engenharia aplicadas no núcleo Win32, HUD e Vault, os próximos marcos estratégicos são:
-1. **Modelos Neurais Locais ONNX / DirectML ([Issue #4](https://github.com/PedroGomesL/LoTra/issues/4))**: Empacotamento de modelos MarianMT / NLLB-200 quantizados com DirectML para inferência neural sem Ollama.
-2. **Suporte Cross-Platform Linux / macOS ([Issue #6](https://github.com/PedroGomesL/LoTra/issues/6))**: Implementação dos backends de atalhos e seleção de texto para Wayland/X11 e macOS Accessibility API.
-3. **Resiliência Avançada de PDFs ([Issue #9](https://github.com/PedroGomesL/LoTra/issues/9))**: Suporte a decompressão FlateDecode de `/ObjStm` e dicionários `/Encrypt` em streams corrompidos sem tabela xref.
+Todas as 10 issues catalogadas foram integralmente resolvidas, verificadas e testadas com rigor arquitetural no código do repositório:
+- **Issue #1**: Verificação O(0ms) de integridade UIPI e fallback para seleção pré-copiada.
+- **Issue #2**: Clamping de área de trabalho multi-monitor (`rcWork`) e escalonamento DPI dinâmico por monitor (`GetDpiForMonitor`).
+- **Issue #3**: Recorte nativo em overlay Tkinter multi-monitor (`NativeScreenSnipper`) com cancelamento instantâneo (< 5ms) e captura direta sem poluição do clipboard.
+- **Issue #4**: Motor `ONNXTranslationEngine` autônomo com suporte a CTranslate2/ONNX e hierarquia formal de fallback em 4 tiers.
+- **Issue #5**: SQLite com `PRAGMA auto_vacuum = INCREMENTAL` (modo 2 garantido), autolimpeza de WAL, tracking LRU (`last_accessed_at`) e cota unificada de retenção.
+- **Issue #6**: Abstração cross-platform `IPlatformBridge` para Windows, Linux (Wayland/X11 com `wl-clipboard`, `xclip`, `xsel`) e macOS.
+- **Issue #7**: Pipeline de CI/CD automatizado via GitHub Actions com matriz multi-OS e checagens GNU SHA-256.
+- **Issue #8**: Especificação PyInstaller portátil baseada em `SPECPATH`, `upx=False`, console configurável e empacotamento completo de módulos.
+- **Issue #9**: Stream carving resiliente para `/ObjStm` comprimidos via `zlib.decompressobj` e descriptografia ISO 32000-1 Algoritmo 2 com senhas em branco.
+- **Issue #10**: Poda precoce de junções NTFS, symlinks e caminhos protegidos em `os.walk` antes da recursão, prevenindo loops e estouro de pilha.

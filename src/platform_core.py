@@ -383,6 +383,10 @@ class LinuxPlatformBridge(IPlatformBridge):
                 res = subprocess.run(["xclip", "-selection", "clipboard", "-o"], capture_output=True, text=True, timeout=1.0)
                 if res.returncode == 0:
                     return res.stdout
+            elif shutil.which("xsel"):
+                res = subprocess.run(["xsel", "--clipboard", "--output"], capture_output=True, text=True, timeout=1.0)
+                if res.returncode == 0:
+                    return res.stdout
         except Exception:
             pass
         return ""
@@ -395,6 +399,10 @@ class LinuxPlatformBridge(IPlatformBridge):
                 return p.returncode == 0
             elif shutil.which("xclip"):
                 p = subprocess.Popen(["xclip", "-selection", "clipboard", "-i"], stdin=subprocess.PIPE)
+                p.communicate(text.encode("utf-8"), timeout=1.0)
+                return p.returncode == 0
+            elif shutil.which("xsel"):
+                p = subprocess.Popen(["xsel", "--clipboard", "--input"], stdin=subprocess.PIPE)
                 p.communicate(text.encode("utf-8"), timeout=1.0)
                 return p.returncode == 0
         except Exception:
@@ -410,6 +418,10 @@ class LinuxPlatformBridge(IPlatformBridge):
                     return res.stdout
             elif shutil.which("xclip"):
                 res = subprocess.run(["xclip", "-selection", "primary", "-o"], capture_output=True, text=True, timeout=0.5)
+                if res.returncode == 0 and res.stdout.strip():
+                    return res.stdout
+            elif shutil.which("xsel"):
+                res = subprocess.run(["xsel", "--primary", "--output"], capture_output=True, text=True, timeout=0.5)
                 if res.returncode == 0 and res.stdout.strip():
                     return res.stdout
         except Exception:

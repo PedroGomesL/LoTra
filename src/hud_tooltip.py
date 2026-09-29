@@ -123,6 +123,17 @@ def _setup_win32_prototypes():
     u32.GetWindowThreadProcessId.restype = ctypes.wintypes.DWORD
     u32.GetWindowThreadProcessId.argtypes = [ctypes.wintypes.HWND, ctypes.POINTER(ctypes.wintypes.DWORD)]
 
+    # Shcore DPI per monitor
+    try:
+        if hasattr(ctypes.windll, "shcore") and hasattr(ctypes.windll.shcore, "GetDpiForMonitor"):
+            ctypes.windll.shcore.GetDpiForMonitor.restype = ctypes.c_long
+            ctypes.windll.shcore.GetDpiForMonitor.argtypes = [
+                ctypes.c_void_p, ctypes.c_int,
+                ctypes.POINTER(ctypes.c_uint), ctypes.POINTER(ctypes.c_uint)
+            ]
+    except Exception:
+        pass
+
 enable_dpi_awareness()
 _setup_win32_prototypes()
 
@@ -147,20 +158,25 @@ def get_monitor_work_area_for_point(x: int, y: int) -> Tuple[int, int, int, int]
 
 def get_dpi_for_point(x: int, y: int) -> int:
     """
-    Retorna o DPI efetivo do monitor no ponto (x, y) utilizando GetDpiForMonitor
-    ou 96 (padrão 100% de escala) caso não esteja no Windows ou a API falhe.
+    Retorna o DPI efetivo do monitor no ponto (x, y) utilizando GetDpiForMonitor,
+    GetDpiForSystem ou 96 (padrão 100% de escala) caso não esteja no Windows ou a API falhe.
     """
     if sys.platform == "win32":
         try:
             pt = ctypes.wintypes.POINT(int(x), int(y))
             MONITOR_DEFAULTTONEAREST = 2
             h_mon = ctypes.windll.user32.MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST)
-            if h_mon:
+            if h_mon and hasattr(ctypes.windll, "shcore") and hasattr(ctypes.windll.shcore, "GetDpiForMonitor"):
                 dpi_x = ctypes.c_uint()
                 dpi_y = ctypes.c_uint()
                 # MDT_EFFECTIVE_DPI = 0
                 if ctypes.windll.shcore.GetDpiForMonitor(h_mon, 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y)) == 0:
-                    return dpi_x.value
+                    return int(dpi_x.value)
+        except Exception:
+            pass
+        try:
+            if hasattr(ctypes.windll.user32, "GetDpiForSystem"):
+                return int(ctypes.windll.user32.GetDpiForSystem())
         except Exception:
             pass
     return 96
@@ -192,12 +208,13 @@ def is_foreground_window_elevated() -> bool:
         PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
         h_proc = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid.value)
         if not h_proc:
-            return True  # Acesso negado pelo kernel ao tentar abrir: janela com integridade maior
+            # ERROR_ACCESS_DENIED (5) indica processo protegido/elevado
+            return kernel32.GetLastError() == 5
         try:
             TOKEN_QUERY = 0x0008
             h_token = ctypes.wintypes.HANDLE()
             if not advapi32.OpenProcessToken(h_proc, TOKEN_QUERY, ctypes.byref(h_token)):
-                return True
+                return kernel32.GetLastError() == 5
             try:
                 class TOKEN_ELEVATION(ctypes.Structure):
                     _fields_ = [("TokenIsElevated", ctypes.wintypes.DWORD)]

@@ -480,12 +480,22 @@ def test_scanner_resilience_symlinks_and_errors():
         with open(doc2, "w", encoding="utf-8") as f:
             f.write("Second document text")
 
-        # Testa criação de link simbólico ou junção circular se o SO permitir
+        # Testa criação de link simbólico ou junção circular real
         link_dir = os.path.join(sub_dir, "circular_link")
-        try:
-            os.symlink(base_dir, link_dir, target_is_directory=True)
-        except (OSError, NotImplementedError):
-            pass
+        junction_created = False
+        if sys.platform == "win32":
+            try:
+                res_mk = subprocess.run(["cmd", "/c", "mklink", "/J", link_dir, base_dir], capture_output=True, text=True)
+                if res_mk.returncode == 0 and os.path.exists(link_dir):
+                    junction_created = True
+            except Exception:
+                pass
+        if not junction_created:
+            try:
+                os.symlink(base_dir, link_dir, target_is_directory=True)
+                junction_created = True
+            except (OSError, NotImplementedError):
+                pass
 
         db_path = os.path.join(tmpdir, "symlink_test.db")
         vault = DocumentContextVault(db_path=db_path)
@@ -497,16 +507,15 @@ def test_scanner_resilience_symlinks_and_errors():
         elapsed = time.perf_counter() - t0
 
         assert res["status"] == "completed"
-        assert res["total_discovered"] >= 2
+        # A poda precoce deve impedir qualquer duplicação decorrente do loop circular
+        assert res["total_discovered"] == 2, f"Esperado 2 arquivos desconsiderando junção circular, obteve: {res['total_discovered']}"
         assert elapsed < 5.0, f"Scan demorou demais, possível loop infinito: {elapsed:.2f}s"
 
-        # Validação explícita de poda precoce (early pruning) via os.lstat
-        # Cria um diretório de junção/link simulado e valida que os.lstat detecta atributos de link
-        test_sub = os.path.join(base_dir, "test_prune")
-        os.makedirs(test_sub, exist_ok=True)
-        st_test = os.lstat(test_sub)
-        assert hasattr(st_test, "st_mode")
-        assert not stat.S_ISLNK(st_test.st_mode)
+        if junction_created:
+            st_link = os.lstat(link_dir)
+            reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x0400)
+            is_link_detected = stat.S_ISLNK(st_link.st_mode) or (hasattr(st_link, "st_file_attributes") and bool(st_link.st_file_attributes & reparse_flag))
+            assert is_link_detected is True, "Junção/link deve ser identificado por os.lstat"
         print(f"  [OK] Scan completado em {elapsed*1000:.2f}ms com poda precoce de junções e tolerância a erros!")
 
 if __name__ == "__main__":

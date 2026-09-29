@@ -25,6 +25,7 @@ if str(ROOT_DIR) not in sys.path:
 from resource_utils import get_resource_path
 from ocr_engine import WindowsMediaOCREngine
 from translation_engine import TranslationPipeline, OfflineContextTranslator, OFFLINE_TECHNICAL_GLOSSARY
+import hud_tooltip
 from hud_tooltip import (
     HUDTooltip,
     HotkeyListener,
@@ -82,7 +83,21 @@ def test_clipboard_and_hud_readiness():
     hud.pump_events()
     hud.dismiss()
     hud.destroy()
-    print("  [PASS] HUD Tooltip ciclo de vida e suporte multi-monitor validado com sucesso.")
+
+    # Valida clamping em monitor secundário virtual com coordenadas negativas (-1920 a 0)
+    hud2 = HUDTooltip()
+    orig_work_area = hud_tooltip.get_monitor_work_area_for_point
+    try:
+        hud_tooltip.get_monitor_work_area_for_point = lambda x, y: (-1920, 0, 0, 1080)
+        hud2.show("Negative Coordinate Monitor Test", "Source", cursor_pos=(-1000, 300))
+        assert hud2._is_active is True
+        hud2.pump_events()
+        assert hud2._window.winfo_x() < 0 or "+-" in hud2._window.geometry(), "Janela deve estar posicionada no monitor secundário negativo"
+        hud2.dismiss()
+    finally:
+        hud_tooltip.get_monitor_work_area_for_point = orig_work_area
+        hud2.destroy()
+    print("  [PASS] HUD Tooltip ciclo de vida e suporte multi-monitor com coordenadas negativas validados com sucesso.")
 
     # Valida detecção de integridade de privilégios UIPI
     proc_elevated = is_process_elevated()
@@ -108,6 +123,42 @@ def test_clipboard_and_hud_readiness():
     assert cancel_called is True
     assert t_cancel_ms < 25.0  # Fechamento instantâneo (< 5ms na maioria das CPUs)
     print(f"  [PASS] NativeScreenSnipper cancelamento instantâneo via Esc validado ({t_cancel_ms:.2f}ms < 25ms)!")
+
+    # Valida NativeScreenSnipper: fluxo completo de seleção e isolamento de callbacks
+    snipper2 = NativeScreenSnipper()
+    snip_invoked = False
+    cancel_invoked = False
+    def on_snip(img, pos):
+        nonlocal snip_invoked
+        snip_invoked = True
+    def on_canc():
+        nonlocal cancel_invoked
+        cancel_invoked = True
+
+    snipper2.start_snip(on_snip=on_snip, on_cancel=on_canc)
+    orig_grab = snipper2.grab_bbox
+    snipper2.grab_bbox = lambda bbox: Image.new("RGB", (100, 50), (255, 255, 255))
+    try:
+        class MockEvent:
+            def __init__(self, x, y):
+                self.x = x
+                self.y = y
+
+        snipper2._on_button_press(MockEvent(50, 50))
+        snipper2._on_mouse_drag(MockEvent(150, 100))
+        snipper2._start_x = 50
+        snipper2._start_y = 50
+        snipper2._window.winfo_pointerx = lambda: 150
+        snipper2._window.winfo_pointery = lambda: 100
+        snipper2._on_button_release(MockEvent(150, 100))
+
+        assert snipper2.is_active is False
+        assert snip_invoked is True, "on_snip deve ser invocado em seleção válida"
+        assert cancel_invoked is False, "on_cancel NÃO deve ser invocado em seleção válida bem-sucedida"
+        print("  [PASS] NativeScreenSnipper seleção completa e isolamento de callbacks validados com sucesso!")
+    finally:
+        snipper2.grab_bbox = orig_grab
+        snipper2.cancel()
 
     # Valida Platform Bridge multi-OS
     bridge = get_platform_bridge()
