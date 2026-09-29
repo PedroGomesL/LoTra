@@ -35,6 +35,7 @@ from hud_tooltip import (
     simulate_copy_selection,
     normalize_text_spacing
 )
+from screen_snipper import NativeScreenSnipper
 from resource_utils import get_resource_path
 
 class LoTraApp:
@@ -46,6 +47,7 @@ class LoTraApp:
         self.ocr_engine = WindowsMediaOCREngine()
         self.translator = TranslationPipeline(vault=self.vault)
         self.hud = HUDTooltip()
+        self.screen_snipper = NativeScreenSnipper(root=self.hud._root)
         self.hotkey_listener: Optional[HotkeyListener] = None
         self._ui_queue: queue.Queue = queue.Queue()
         self._is_serving: bool = False
@@ -172,10 +174,33 @@ class LoTraApp:
     def trigger_ocr_screen_snip(self):
         """
         Disparado via [Alt + W]:
-        Dispara a captura de tela nativa (ms-screenclip: do Windows),
-        aguarda o recorte do usuário no clipboard e executa OCR + tradução local.
+        Dispara o recorte nativo de tela (NativeScreenSnipper) thread-safe via UI thread,
+        com cancelamento instantâneo via Esc (< 5ms) e captura direta sem poluir o clipboard.
         """
-        threading.Thread(target=self._ocr_worker_task, daemon=True, name="LoTra_OCR_Worker").start()
+        if self._is_serving:
+            self._ui_queue.put({"_action": "start_native_snip"})
+        else:
+            threading.Thread(target=self._ocr_worker_task, daemon=True, name="LoTra_OCR_Worker").start()
+
+    def _handle_native_snip(self):
+        """Inicia o NativeScreenSnipper na thread de UI."""
+        def on_snip(img, pos):
+            def ocr_task():
+                ocr_res = self.ocr_engine.recognize_pil_image(img)
+                if not ocr_res.get("success") or not ocr_res.get("text"):
+                    print("[LoTra OCR Snip] Nenhum texto legível encontrado pelo OCR.")
+                    return
+                clean_text = normalize_text_spacing(ocr_res["text"])
+                trans_res = self.translate_text(clean_text)
+                trans_res["engine_used"] = f"Native Snipper + WinRT OCR ({ocr_res.get('inference_ms', 0):.0f}ms) + {trans_res['engine_used']}"
+                trans_res["cursor_pos"] = pos
+                self._ui_queue.put(trans_res)
+            threading.Thread(target=ocr_task, daemon=True, name="LoTra_OCR_Worker").start()
+
+        self.screen_snipper.start_snip(
+            on_snip=on_snip,
+            on_cancel=lambda: print("[LoTra OCR Snip] Recorte cancelado pelo usuário (< 5ms).")
+        )
 
     def _ocr_worker_task(self):
         from PIL import Image, ImageGrab
@@ -239,11 +264,15 @@ class LoTraApp:
         self._ui_queue.put(trans_res)
 
     def stop_hud_service(self):
-        """Para o daemon HUD cooperativamente."""
+        """Para o daemon HUD cooperativamente e executa checkpoint de encerramento limpo do banco."""
         self._is_serving = False
         if self.hotkey_listener:
             self.hotkey_listener.stop()
+        if self.screen_snipper and self.screen_snipper.is_active:
+            self.screen_snipper.cancel()
         self.hud.destroy()
+        if self.vault:
+            self.vault.shutdown()
         VRAMManager.trim_process_memory()
 
     def start_hud_service(self):
@@ -267,13 +296,19 @@ class LoTraApp:
                 # Esvazia a fila de eventos vindos do HotkeyListener em segundo plano
                 while not self._ui_queue.empty():
                     try:
-                        res = self._ui_queue.get_nowait()
+                        item = self._ui_queue.get_nowait()
+                        if isinstance(item, dict) and item.get("_action") == "start_native_snip":
+                            self._handle_native_snip()
+                            continue
+
+                        res = item
                         self.hud.show(
                             translated_text=res["translated_text"],
-                            source_text=res["source_text"],
-                            latency_ms=res["latency_ms"],
-                            engine_name=res["engine_used"],
-                            timeout_sec=8.0
+                            source_text=res.get("source_text", ""),
+                            latency_ms=res.get("latency_ms", 0.0),
+                            engine_name=res.get("engine_used", "LoTra Engine"),
+                            timeout_sec=8.0,
+                            cursor_pos=res.get("cursor_pos")
                         )
                     except queue.Empty:
                         break

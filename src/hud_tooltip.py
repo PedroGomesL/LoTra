@@ -145,6 +145,26 @@ def get_monitor_work_area_for_point(x: int, y: int) -> Tuple[int, int, int, int]
             pass
     return (0, 0, 1920, 1080)
 
+def get_dpi_for_point(x: int, y: int) -> int:
+    """
+    Retorna o DPI efetivo do monitor no ponto (x, y) utilizando GetDpiForMonitor
+    ou 96 (padrão 100% de escala) caso não esteja no Windows ou a API falhe.
+    """
+    if sys.platform == "win32":
+        try:
+            pt = ctypes.wintypes.POINT(int(x), int(y))
+            MONITOR_DEFAULTTONEAREST = 2
+            h_mon = ctypes.windll.user32.MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST)
+            if h_mon:
+                dpi_x = ctypes.c_uint()
+                dpi_y = ctypes.c_uint()
+                # MDT_EFFECTIVE_DPI = 0
+                if ctypes.windll.shcore.GetDpiForMonitor(h_mon, 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y)) == 0:
+                    return dpi_x.value
+        except Exception:
+            pass
+    return 96
+
 def is_process_elevated() -> bool:
     """Verifica se o processo atual do LoTra está rodando com privilégios de Administrador."""
     if sys.platform != "win32":
@@ -336,11 +356,26 @@ def simulate_copy_selection(timeout_sec: float = 0.35) -> str:
     Simula o comando de cópia (Ctrl+C) na janela ativa do Windows
     para capturar o texto selecionado pelo usuário sem que seja necessário
     pressionar Ctrl+C manualmente antes de Alt+Q.
+
+    Verificação O(0ms) de integridade de token UIPI:
+    Se a janela em primeiro plano for de nível elevado (Administrador) e o LoTra
+    estiver em privilégio padrão:
+    - Se o usuário já tiver copiado texto manualmente para o clipboard (pre-copied), utiliza-o imediatamente.
+    - Se o clipboard estiver vazio, aborta instantaneamente em O(0ms) e retorna aviso explicativo
+      sem travar o usuário aguardando timeout de mensagens que o kernel descartaria.
     """
     if sys.platform != "win32":
         return ""
 
     user32 = ctypes.windll.user32
+
+    # 0. Verificação O(0ms) de integridade UIPI antes de enviar eventos de teclado
+    if not is_process_elevated() and is_foreground_window_elevated():
+        pre_copied = get_windows_clipboard_text().strip()
+        if pre_copied:
+            return pre_copied
+        return "[Aviso UIPI] Janela em modo Administrador detectada. Execute o LoTra como Administrador ou use Ctrl+C antes do Alt+Q."
+
     seq_before = user32.GetClipboardSequenceNumber()
 
     # 1. Garante que as teclas modificadoras estejam liberadas para não interferir no envio do Ctrl+C
@@ -370,6 +405,9 @@ def simulate_copy_selection(timeout_sec: float = 0.35) -> str:
     # 4. Retorna o texto capturado ou trata restrição de privilégio UIPI
     if user32.GetClipboardSequenceNumber() == seq_before:
         if not is_process_elevated() and is_foreground_window_elevated():
+            pre_copied = get_windows_clipboard_text().strip()
+            if pre_copied:
+                return pre_copied
             return "[Aviso UIPI] Janela em modo Administrador detectada. Execute o LoTra como Administrador ou use Ctrl+C antes do Alt+Q."
         return ""
 
@@ -439,27 +477,32 @@ class HUDTooltip:
         mon_left, mon_top, mon_right, mon_bottom = get_monitor_work_area_for_point(cx, cy)
         mon_w = max(400, mon_right - mon_left)
 
+        # Escala dinâmica de DPI por monitor via GetDpiForMonitor
+        dpi = get_dpi_for_point(cx, cy)
+        dpi_scale = max(1.0, dpi / 96.0)
+        font_size = max(9, int(round(11 * dpi_scale)))
+
         # Ajuste dinâmico de largura de quebra para garantir tipografia e proporções ideais
         char_len = len(trans_display)
         if char_len < 45 and "\n" not in trans_display:
             wrap_width = 0  # Texto curto em linha única
         elif char_len < 160:
-            wrap_width = 440
+            wrap_width = int(440 * dpi_scale)
         elif char_len < 450:
-            wrap_width = 540
+            wrap_width = int(540 * dpi_scale)
         else:
-            wrap_width = 620
+            wrap_width = int(620 * dpi_scale)
 
         # Não excede a largura utilizável do monitor atual
-        max_wrap = max(360, mon_w - 80)
+        max_wrap = max(int(360 * dpi_scale), mon_w - int(80 * dpi_scale))
         if wrap_width > 0:
             wrap_width = min(wrap_width, max_wrap)
 
-        # Texto traduzido com fonte Times New Roman serifada, elegante e compacta
+        # Texto traduzido com fonte Times New Roman serifada, elegante e compacta escalada por DPI
         trans_label = tk.Label(
             main_frame,
             text=trans_display,
-            font=("Times New Roman", 11),
+            font=("Times New Roman", font_size),
             fg=text_primary,
             bg=bg_dark,
             wraplength=wrap_width,

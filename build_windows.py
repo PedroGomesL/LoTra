@@ -132,6 +132,7 @@ def run_pyinstaller_build(mode: str = "onefile") -> Path:
             "ocr_engine",
             "translation_engine",
             "hud_tooltip",
+            "screen_snipper",
             "resource_utils",
             "platform_core",
             "adaptive_engine_orchestrator",

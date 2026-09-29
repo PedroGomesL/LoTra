@@ -118,39 +118,184 @@ class PDFResilienceManager:
         }
 
     @staticmethod
-    def carve_text_from_corrupted_stream(pdf_bytes: bytes) -> list:
+    def decompress_flate_stream(stream_data: bytes) -> Optional[bytes]:
         """
-        Extrai e reconstrói fragmentos de texto diretamente dos streams brutos de um PDF
-        mesmo que a tabela XREF, trailer ou cabeçalho estejam corrompidos ou ausentes.
-        Faz o parse defensivo de operadores de texto PDF (BT ... Tj / TJ ... ET).
+        Descomprime stream FlateDecode usando zlib.decompressobj.
+        Tolerante a fluxos de dados parciais, concatenados ou com bytes residuais após o stream.
         """
+        import zlib
+        for wbits in (zlib.MAX_WBITS, -zlib.MAX_WBITS):
+            try:
+                dobj = zlib.decompressobj(wbits)
+                decomp = dobj.decompress(stream_data)
+                if decomp and len(decomp) > 0:
+                    return decomp
+            except Exception:
+                pass
+        return None
+
+    @staticmethod
+    def rc4_crypt(key: bytes, data: bytes) -> bytes:
+        """Cifra / decifra dados usando ARC4 (RC4) compatível com PDF Standard Encryption."""
+        if not key or not data:
+            return data
+        S = list(range(256))
+        j = 0
+        for i in range(256):
+            j = (j + S[i] + key[i % len(key)]) & 0xff
+            S[i], S[j] = S[j], S[i]
+        i = j = 0
+        res = bytearray(len(data))
+        for idx, b in enumerate(data):
+            i = (i + 1) & 0xff
+            j = (j + S[i]) & 0xff
+            S[i], S[j] = S[j], S[i]
+            K = S[(S[i] + S[j]) & 0xff]
+            res[idx] = b ^ K
+        return bytes(res)
+
+    @staticmethod
+    def derive_iso32000_user_key(password: bytes = b"", 
+                                 o_entry: bytes = b"", 
+                                 p_entry: int = -4, 
+                                 id_entry: bytes = b"", 
+                                 r_val: int = 3, 
+                                 key_length_bits: int = 128) -> bytes:
+        """
+        Deriva a chave de criptografia de usuário segundo ISO 32000-1 (Seção 7.6.3.3 / Algoritmo 2)
+        para senhas padrão ou em branco (empty password).
+        """
+        import hashlib
+        import struct
+
+        pad_bytes = (
+            b"\x28\xbf\x4e\x5e\x4e\x75\x8a\x41\x64\x00\x4e\x56\xff\xfa\x01\x08"
+            b"\x2e\x2e\x00\xb6\xd0\x68\x3e\x80\x2f\x0c\xa9\xfe\x64\x53\x69\x7a"
+        )
+        # 1. Trunca ou preenche a senha com os 32 bytes de padding padrão
+        if len(password) < 32:
+            pw_padded = password + pad_bytes[:32 - len(password)]
+        else:
+            pw_padded = password[:32]
+
+        m = hashlib.md5()
+        m.update(pw_padded)
+
+        # 2. Adiciona o valor /O (32 bytes)
+        o_clean = o_entry[:32] if len(o_entry) >= 32 else o_entry.ljust(32, b'\x00')
+        m.update(o_clean)
+
+        # 3. Adiciona o valor de permissões /P (inteiro de 32 bits little-endian)
+        m.update(struct.pack('<i', p_entry))
+
+        # 4. Adiciona o primeiro identificador /ID do trailer
+        m.update(id_entry)
+
+        key_len_bytes = max(5, min(16, key_length_bits // 8))
+        h = m.digest()
+
+        # 5. Se R >= 3, realiza 50 iterações sucessivas de MD5
+        if r_val >= 3:
+            for _ in range(50):
+                h = hashlib.md5(h[:key_len_bytes]).digest()
+
+        return h[:key_len_bytes]
+
+    @staticmethod
+    def _extract_text_snippets_from_raw_block(raw_bytes: bytes) -> list:
+        """Extrai snippets de texto de blocos PDF decodificados (operadores BT..ET e strings)."""
         import re
         extracted = []
-        
-        # Expressão regular para blocos de texto PDF uncompressed: BT ... ET
-        bt_blocks = re.findall(rb'BT[\s\S]*?ET', pdf_bytes)
-        
+
+        # 1. Blocos de texto formatados: BT ... ET
+        bt_blocks = re.findall(rb'BT[\s\S]*?ET', raw_bytes)
         for block in bt_blocks:
-            # 1. Carrega strings literais: (texto) Tj ou (texto)' ou (texto)"
             tj_matches = re.findall(rb'\((.*?)\)\s*(?:Tj|\'|\")', block)
             for m in tj_matches:
                 try:
                     txt = m.decode('latin1', errors='ignore')
-                    # Remove escapes comuns de PDF
                     txt = txt.replace(r'\(', '(').replace(r'\)', ')').replace(r'\\', '\\')
                     if txt.strip():
                         extracted.append(txt.strip())
                 except Exception:
                     pass
-                    
-            # 2. Carrega arrays de texto com kerning: [ (t1) -12 (t2) ] TJ
+
             array_matches = re.findall(rb'\[([\s\S]*?)\]\s*TJ', block)
             for arr in array_matches:
                 parts = re.findall(rb'\((.*?)\)', arr)
                 assembled = "".join([p.decode('latin1', errors='ignore') for p in parts]).strip()
                 if assembled:
                     extracted.append(assembled)
-                    
+
+        # 2. Strings literais isoladas em Compressed Object Streams (/ObjStm)
+        if not extracted:
+            obj_strings = re.findall(rb'\(([A-Za-z0-9\x80-\xff\s\.,;:!\?\-\'\"]{4,})\)', raw_bytes)
+            for s in obj_strings:
+                try:
+                    txt = s.decode('latin1', errors='ignore').strip()
+                    if txt and not txt.startswith("/") and len(txt) > 3:
+                        extracted.append(txt)
+                except Exception:
+                    pass
+
+        return extracted
+
+    @classmethod
+    def carve_text_from_corrupted_stream(cls, pdf_bytes: bytes) -> list:
+        """
+        Extrai e reconstrói fragmentos de texto diretamente dos streams brutos de um PDF
+        mesmo que a tabela XREF, trailer ou cabeçalho estejam corrompidos ou ausentes.
+        Suporta:
+        - Blocos uncompressed diretos (BT ... Tj / TJ ... ET)
+        - Compressed Object Streams (/ObjStm) descomprimidos via zlib.decompressobj
+        - Decodificação de PDFs criptografados com senha em branco via ISO 32000-1 Algoritmo 2
+        """
+        import re
+        extracted = []
+        seen = set()
+
+        def _add(items):
+            for it in items:
+                if it not in seen:
+                    seen.add(it)
+                    extracted.append(it)
+
+        # 1. Carve em blocos de texto não comprimidos
+        _add(cls._extract_text_snippets_from_raw_block(pdf_bytes))
+
+        # 2. Carve em Streams comprimidos (FlateDecode e /ObjStm)
+        stream_matches = re.findall(rb'stream[\r\n]+([\s\S]*?)[\r\n]+endstream', pdf_bytes)
+        for s_data in stream_matches:
+            decomp = cls.decompress_flate_stream(s_data)
+            if decomp:
+                _add(cls._extract_text_snippets_from_raw_block(decomp))
+
+        # 3. Suporte a PDFs criptografados com senha vazia / padrão (ISO 32000-1)
+        if b"/Encrypt" in pdf_bytes and not extracted:
+            try:
+                # Tenta derivar chave padrão de usuário (blank password "")
+                o_match = re.search(rb'/O\s*<([0-9a-fA-F]{64})>', pdf_bytes)
+                p_match = re.search(rb'/P\s*(-?\d+)', pdf_bytes)
+                id_match = re.search(rb'/ID\s*\[\s*<([0-9a-fA-F]+)>', pdf_bytes)
+
+                o_bytes = bytes.fromhex(o_match.group(1).decode()) if o_match else b"\x00" * 32
+                p_val = int(p_match.group(1)) if p_match else -4
+                id_bytes = bytes.fromhex(id_match.group(1).decode()) if id_match else b"\x00" * 16
+
+                user_key = cls.derive_iso32000_user_key(
+                    password=b"",
+                    o_entry=o_bytes,
+                    p_entry=p_val,
+                    id_entry=id_bytes
+                )
+
+                for s_data in stream_matches:
+                    decrypted = cls.rc4_crypt(user_key, s_data)
+                    decomp = cls.decompress_flate_stream(decrypted) or decrypted
+                    _add(cls._extract_text_snippets_from_raw_block(decomp))
+            except Exception:
+                pass
+
         return extracted
 
     @staticmethod

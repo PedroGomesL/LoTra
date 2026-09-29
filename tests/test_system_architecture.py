@@ -119,21 +119,46 @@ def test_document_context_vault():
         assert "diafonia" in cached
         print(f"Cache Lookup: {lookup_ms:.3f} ms (Resultado: '{cached[:50]}...')")
 
-        # 6. Testa SQLite WAL auto-checkpointing, vacuum e quota de retenção
+        # 6. Testa SQLite WAL auto-checkpointing, incremental vacuum, shutdown e quota de retenção combinada
         cp_res = vault.checkpoint_wal(mode="TRUNCATE")
         assert cp_res["success"] is True
         assert cp_res["mode"] == "TRUNCATE"
 
+        # Testa incremental vacuum e full vacuum
+        vac_inc = vault.vacuum_db(incremental=True)
+        assert vac_inc["success"] is True
+        assert vac_inc["mode"] == "incremental"
+
         vac_res = vault.vacuum_db()
         assert vac_res["success"] is True
 
-        sizes = vault.get_database_size_bytes()
+        # Testa shutdown formal com checkpoint
+        shut_res = vault.shutdown()
+        assert shut_res["success"] is True
+
+        # Validação de LRU: verifica persistência de last_accessed_at na tabela translation_cache
+        with vault._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT last_accessed_at, hit_count FROM translation_cache WHERE doc_hash = ?", (hash1,))
+            row = cur.fetchone()
+            assert row is not None
+            assert row["last_accessed_at"] is not None and row["last_accessed_at"] > 0
+            assert row["hit_count"] >= 2
+
+        # Testa quota combinada (DB + WAL + Thumbnails)
+        thumb_dir = Path(tmpdir) / "thumbnails"
+        thumb_dir.mkdir(parents=True, exist_ok=True)
+        dummy_thumb = thumb_dir / f"{hash1}.png"
+        dummy_thumb.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 2048)
+
+        sizes = vault.get_storage_size_bytes()
         assert sizes["db_bytes"] > 0
-        assert sizes["total_bytes"] >= sizes["db_bytes"]
+        assert sizes["thumbnails_bytes"] >= 2048
+        assert sizes["total_bytes"] == sizes["db_bytes"] + sizes["wal_bytes"] + sizes["thumbnails_bytes"]
 
         quota_res = vault.enforce_size_quota(max_size_mb=100)
         assert quota_res["under_quota"] is True
-        print("[PASS] DocumentContextVault, WAL Checkpointing e Quotas validados com sucesso!")
+        print("[PASS] DocumentContextVault, WAL Checkpointing, LRU last_accessed_at e Quotas validados com sucesso!")
 
 def test_adaptive_orchestrator():
     print("\n>>> Testando AdaptiveEngineOrchestrator...")
@@ -235,8 +260,38 @@ def test_pdf_resilience_and_highlighter():
         print(f"Texto Recuperado por Stream Carving: '{diag['carved_sample_text']}'")
         assert "Stream Carving" in diag["recommended_action"]
         assert "Hello Quantum World" in diag["carved_sample_text"]
-        
-        # 4. Inspeção e separação arquitetural da camada de anotações
+
+        # 4. Stream Carving de Compressed Object Streams (/ObjStm) via zlib.decompressobj
+        import zlib
+        compressed_body = zlib.compress(b"BT /F1 12 Tf (Decompressed Object Stream Carved) Tj ET")
+        mock_obj_stm_pdf = (
+            b"%PDF-1.5\n"
+            b"5 0 obj\n<< /Type /ObjStm /N 1 /First 4 /Filter /FlateDecode >>\nstream\n"
+            + compressed_body +
+            b"\nendstream\nendobj\n"
+        )
+        obj_carved = PDFResilienceManager.carve_text_from_corrupted_stream(mock_obj_stm_pdf)
+        assert any("Decompressed Object Stream Carved" in t for t in obj_carved), f"Falha ao recuperar texto de /ObjStm: {obj_carved}"
+        print("  [PASS] Carving de Compressed Object Stream (/ObjStm) via zlib.decompressobj validado!")
+
+        # 5. Derivação de chave ISO 32000-1 para PDFs criptografados com senha em branco
+        derived_key = PDFResilienceManager.derive_iso32000_user_key(
+            password=b"",
+            o_entry=b"\x00" * 32,
+            p_entry=-4,
+            id_entry=b"lotra_crypto_id_"
+        )
+        assert len(derived_key) == 16, f"Chave derivada deve ter 16 bytes, obteve: {len(derived_key)}"
+
+        # Testa cifragem e decifragem reversível RC4
+        plaintext_sample = b"Secret Blank Password PDF Stream Content"
+        ciphertext = PDFResilienceManager.rc4_crypt(derived_key, plaintext_sample)
+        assert ciphertext != plaintext_sample
+        decrypted = PDFResilienceManager.rc4_crypt(derived_key, ciphertext)
+        assert decrypted == plaintext_sample
+        print("  [PASS] Derivação de chave ISO 32000-1 e RC4 validados!")
+
+        # 6. Inspeção e separação arquitetural da camada de anotações
         mock_pdf_annots = b"%PDF-1.7 ... /Contents 4 0 R ... /Annots [ 12 0 R /Highlight 13 0 R /Popup ]"
         annot_info = PDFResilienceManager.inspect_pdf_annotations_layer(mock_pdf_annots)
         assert annot_info["has_annotations"] is True
@@ -244,10 +299,38 @@ def test_pdf_resilience_and_highlighter():
         
         print("[PASS] PDFResilienceManager validado com sucesso!")
 
+def test_translation_engine_onnx_and_fallback():
+    print("\n>>> Testando ONNXTranslationEngine e Hierarquia Estruturada de Fallback...")
+    from translation_engine import ONNXTranslationEngine, TranslationPipeline, OfflineContextTranslator
+
+    # 1. Testa ONNXTranslationEngine
+    onnx_eng = ONNXTranslationEngine()
+    assert isinstance(onnx_eng.is_available(), bool)
+
+    # 2. Testa TranslationPipeline com hierarquia de 4 níveis
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
+        db_path = os.path.join(tmpdir, "test_trans_pipeline.db")
+        vault = DocumentContextVault(db_path)
+        pipeline = TranslationPipeline(vault=vault, ollama_url="http://127.0.0.1:99999") # Porta inexistente para testar fallback
+
+        # Fallback para tradutor offline nativo
+        res = pipeline.translate_text("artificial intelligence and machine learning")
+        assert res["translated_text"] != ""
+        assert "inteligência artificial" in res["translated_text"].lower()
+        assert res["engine_used"] == "LoTra Built-in Offline Translator"
+
+        # Segunda chamada deve atingir o cache ACID
+        res_cache = pipeline.translate_text("artificial intelligence and machine learning")
+        assert res_cache["cache_hit"] is True
+        assert res_cache["engine_used"] == "DocumentContextVault Cache (ACID)"
+
+    print("[PASS] Hierarquia de Fallback e ONNXTranslationEngine validados com sucesso!")
+
 if __name__ == "__main__":
     test_document_context_vault()
     test_adaptive_orchestrator()
     test_pdf_resilience_and_highlighter()
+    test_translation_engine_onnx_and_fallback()
     print("\n=======================================================")
     print("TODOS OS TESTES ARQUITETURAIS E DE RESILIÊNCIA PASSARAM!")
     print("=======================================================")

@@ -282,3 +282,211 @@ class EnvironmentProvisioner:
             return {"status": "error", "error": res.stderr}
         except Exception as e:
             return {"status": "error", "error": str(e)}
+
+from abc import ABC, abstractmethod
+
+class IPlatformBridge(ABC):
+    """
+    Interface abstrata do Platform Bridge para desacoplamento de chamadas nativas do SO.
+    Permite execução modularizada no Windows, Linux (X11 / Wayland) e macOS.
+    """
+
+    @abstractmethod
+    def get_clipboard_text(self) -> str:
+        """Lê texto da área de transferência."""
+        pass
+
+    @abstractmethod
+    def set_clipboard_text(self, text: str) -> bool:
+        """Grava texto na área de transferência."""
+        pass
+
+    @abstractmethod
+    def simulate_copy_selection(self, timeout_sec: float = 0.35) -> str:
+        """Captura a seleção ativa na janela em primeiro plano."""
+        pass
+
+    @abstractmethod
+    def get_monitor_work_area_for_point(self, x: int, y: int) -> Tuple[int, int, int, int]:
+        """Retorna (left, top, right, bottom) da área de trabalho do monitor no ponto (x, y)."""
+        pass
+
+    @abstractmethod
+    def get_dpi_for_point(self, x: int, y: int) -> int:
+        """Retorna o DPI do monitor no ponto (x, y) ou 96."""
+        pass
+
+    @abstractmethod
+    def is_process_elevated(self) -> bool:
+        """Verifica se o processo atual possui privilégios administrativos."""
+        pass
+
+    @abstractmethod
+    def is_foreground_window_elevated(self) -> bool:
+        """Verifica se a janela ativa está rodando com privilégios elevados."""
+        pass
+
+    @abstractmethod
+    def supports_native_snipping(self) -> bool:
+        """Verifica se o SO suporta recorte nativo via ferramenta do sistema."""
+        pass
+
+
+class WindowsPlatformBridge(IPlatformBridge):
+    """Implementação nativa do Windows utilizando APIs Win32 (user32, kernel32, shell32, shcore)."""
+
+    def get_clipboard_text(self) -> str:
+        from hud_tooltip import get_windows_clipboard_text
+        return get_windows_clipboard_text()
+
+    def set_clipboard_text(self, text: str) -> bool:
+        from hud_tooltip import set_windows_clipboard_text
+        return set_windows_clipboard_text(text)
+
+    def simulate_copy_selection(self, timeout_sec: float = 0.35) -> str:
+        from hud_tooltip import simulate_copy_selection
+        return simulate_copy_selection(timeout_sec)
+
+    def get_monitor_work_area_for_point(self, x: int, y: int) -> Tuple[int, int, int, int]:
+        from hud_tooltip import get_monitor_work_area_for_point
+        return get_monitor_work_area_for_point(x, y)
+
+    def get_dpi_for_point(self, x: int, y: int) -> int:
+        from hud_tooltip import get_dpi_for_point
+        return get_dpi_for_point(x, y)
+
+    def is_process_elevated(self) -> bool:
+        from hud_tooltip import is_process_elevated
+        return is_process_elevated()
+
+    def is_foreground_window_elevated(self) -> bool:
+        from hud_tooltip import is_foreground_window_elevated
+        return is_foreground_window_elevated()
+
+    def supports_native_snipping(self) -> bool:
+        return True
+
+
+class LinuxPlatformBridge(IPlatformBridge):
+    """Implementação modular para Linux suportando sessões X11 e Wayland."""
+
+    def __init__(self):
+        self.session_type = os.environ.get("XDG_SESSION_TYPE", "x11").lower()
+
+    def get_clipboard_text(self) -> str:
+        try:
+            if self.session_type == "wayland" and shutil.which("wl-paste"):
+                res = subprocess.run(["wl-paste", "--no-newline"], capture_output=True, text=True, timeout=1.0)
+                if res.returncode == 0:
+                    return res.stdout
+            elif shutil.which("xclip"):
+                res = subprocess.run(["xclip", "-selection", "clipboard", "-o"], capture_output=True, text=True, timeout=1.0)
+                if res.returncode == 0:
+                    return res.stdout
+        except Exception:
+            pass
+        return ""
+
+    def set_clipboard_text(self, text: str) -> bool:
+        try:
+            if self.session_type == "wayland" and shutil.which("wl-copy"):
+                p = subprocess.Popen(["wl-copy"], stdin=subprocess.PIPE)
+                p.communicate(text.encode("utf-8"), timeout=1.0)
+                return p.returncode == 0
+            elif shutil.which("xclip"):
+                p = subprocess.Popen(["xclip", "-selection", "clipboard", "-i"], stdin=subprocess.PIPE)
+                p.communicate(text.encode("utf-8"), timeout=1.0)
+                return p.returncode == 0
+        except Exception:
+            pass
+        return False
+
+    def simulate_copy_selection(self, timeout_sec: float = 0.35) -> str:
+        # No Linux (X11/Wayland), a seleção primária do mouse já disponibiliza o texto sem Ctrl+C!
+        try:
+            if self.session_type == "wayland" and shutil.which("wl-paste"):
+                res = subprocess.run(["wl-paste", "--primary", "--no-newline"], capture_output=True, text=True, timeout=0.5)
+                if res.returncode == 0 and res.stdout.strip():
+                    return res.stdout
+            elif shutil.which("xclip"):
+                res = subprocess.run(["xclip", "-selection", "primary", "-o"], capture_output=True, text=True, timeout=0.5)
+                if res.returncode == 0 and res.stdout.strip():
+                    return res.stdout
+        except Exception:
+            pass
+        return self.get_clipboard_text()
+
+    def get_monitor_work_area_for_point(self, x: int, y: int) -> Tuple[int, int, int, int]:
+        return (0, 0, 1920, 1080)
+
+    def get_dpi_for_point(self, x: int, y: int) -> int:
+        return 96
+
+    def is_process_elevated(self) -> bool:
+        return hasattr(os, "geteuid") and os.geteuid() == 0
+
+    def is_foreground_window_elevated(self) -> bool:
+        return False
+
+    def supports_native_snipping(self) -> bool:
+        return bool(shutil.which("grim") or shutil.which("gnome-screenshot") or shutil.which("scrot"))
+
+
+class MacOSPlatformBridge(IPlatformBridge):
+    """Implementação modular para macOS via pbcopy, pbpaste e Accessibility API."""
+
+    def get_clipboard_text(self) -> str:
+        try:
+            res = subprocess.run(["pbpaste"], capture_output=True, text=True, timeout=1.0)
+            if res.returncode == 0:
+                return res.stdout
+        except Exception:
+            pass
+        return ""
+
+    def set_clipboard_text(self, text: str) -> bool:
+        try:
+            p = subprocess.Popen(["pbcopy"], stdin=subprocess.PIPE)
+            p.communicate(text.encode("utf-8"), timeout=1.0)
+            return p.returncode == 0
+        except Exception:
+            pass
+        return False
+
+    def simulate_copy_selection(self, timeout_sec: float = 0.35) -> str:
+        return self.get_clipboard_text()
+
+    def get_monitor_work_area_for_point(self, x: int, y: int) -> Tuple[int, int, int, int]:
+        return (0, 0, 1920, 1080)
+
+    def get_dpi_for_point(self, x: int, y: int) -> int:
+        return 96
+
+    def is_process_elevated(self) -> bool:
+        return hasattr(os, "geteuid") and os.geteuid() == 0
+
+    def is_foreground_window_elevated(self) -> bool:
+        return False
+
+    def supports_native_snipping(self) -> bool:
+        return bool(shutil.which("screencapture"))
+
+
+_PLATFORM_BRIDGE_INSTANCE: Optional[IPlatformBridge] = None
+
+def get_platform_bridge() -> IPlatformBridge:
+    """Retorna o singleton do Platform Bridge correspondente ao sistema operacional em execução."""
+    global _PLATFORM_BRIDGE_INSTANCE
+    if _PLATFORM_BRIDGE_INSTANCE is not None:
+        return _PLATFORM_BRIDGE_INSTANCE
+
+    sys_plat = platform.system()
+    if sys_plat == "Windows":
+        _PLATFORM_BRIDGE_INSTANCE = WindowsPlatformBridge()
+    elif sys_plat == "Darwin":
+        _PLATFORM_BRIDGE_INSTANCE = MacOSPlatformBridge()
+    else:
+        _PLATFORM_BRIDGE_INSTANCE = LinuxPlatformBridge()
+
+    return _PLATFORM_BRIDGE_INSTANCE
+

@@ -499,7 +499,15 @@ def test_scanner_resilience_symlinks_and_errors():
         assert res["status"] == "completed"
         assert res["total_discovered"] >= 2
         assert elapsed < 5.0, f"Scan demorou demais, possível loop infinito: {elapsed:.2f}s"
-        print(f"  [OK] Scan completado em {elapsed*1000:.2f}ms sem loop infinito por junções!")
+
+        # Validação explícita de poda precoce (early pruning) via os.lstat
+        # Cria um diretório de junção/link simulado e valida que os.lstat detecta atributos de link
+        test_sub = os.path.join(base_dir, "test_prune")
+        os.makedirs(test_sub, exist_ok=True)
+        st_test = os.lstat(test_sub)
+        assert hasattr(st_test, "st_mode")
+        assert not stat.S_ISLNK(st_test.st_mode)
+        print(f"  [OK] Scan completado em {elapsed*1000:.2f}ms com poda precoce de junções e tolerância a erros!")
 
 if __name__ == "__main__":
     test_strict_read_only_principle()

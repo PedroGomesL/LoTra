@@ -27,6 +27,7 @@ Inspirado diretamente na arquitetura frank_sherlock:
 
 import os
 import sys
+import stat
 import time
 import json
 import uuid
@@ -138,18 +139,54 @@ class IncrementalScanner:
             known_by_size.setdefault(size, []).append((d_hash, paths[0] if paths else ""))
 
         # Caminhada no diretório (respeitando Princípio Read-Only: zero escritas!)
-        # Proteção contra referências circulares em junções NTFS e tolerância a erros de permissão
+        # Poda precoce (early pruning) de junções NTFS, symlinks e pontos de montagem via os.lstat
         visited_dirs = set()
-        for root, dirs, files in os.walk(norm_root, onerror=lambda err: None):
+
+        def _scan_error_handler(err):
+            # Tratamento silencioso e defensivo de erros de acesso em pastas protegidas
+            pass
+
+        for root, dirs, files in os.walk(norm_root, onerror=_scan_error_handler):
             try:
-                st_dir = os.stat(root)
-                dir_id = (st_dir.st_dev, st_dir.st_ino)
-                if dir_id in visited_dirs:
+                st_root = os.lstat(root)
+                root_id = (st_root.st_dev, st_root.st_ino)
+                if root_id in visited_dirs:
                     dirs[:] = []
                     continue
-                visited_dirs.add(dir_id)
+                visited_dirs.add(root_id)
             except Exception:
                 pass
+
+            # Poda precoce in-place em dirs antes da descida recursiva:
+            # Elimina loops circulares em junções NTFS, symlinks e erros de acesso a diretórios protegidos
+            pruned_dirs = []
+            for d in dirs:
+                sub_path = os.path.join(root, d)
+                try:
+                    # os.lstat NÃO segue o link/junção, permitindo inspecionar seus atributos reais
+                    st_sub = os.lstat(sub_path)
+
+                    # 1. Detecta symlinks
+                    if stat.S_ISLNK(st_sub.st_mode):
+                        continue
+
+                    # 2. Detecta junções NTFS e reparse points no Windows (FILE_ATTRIBUTE_REPARSE_POINT = 0x0400)
+                    reparse_point_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x0400)
+                    if hasattr(st_sub, "st_file_attributes") and (st_sub.st_file_attributes & reparse_point_flag):
+                        continue
+
+                    # 3. Evita re-visitar diretórios já registrados por st_dev / st_ino
+                    sub_id = (st_sub.st_dev, st_sub.st_ino)
+                    if sub_id in visited_dirs:
+                        continue
+
+                    pruned_dirs.append(d)
+                except Exception:
+                    # Falha de permissão (EACCES) ou caminho inacessível: poda defensivamente antes da descida
+                    continue
+
+            # Atualiza dirs in-place para que o os.walk NUNCA desça em junções circulares
+            dirs[:] = pruned_dirs
 
             for file in files:
                 # Cancelamento Cooperativo: checado antes de cada arquivo na descoberta
@@ -165,9 +202,9 @@ class IncrementalScanner:
                 total_discovered += 1
 
                 try:
-                    stat = os.stat(full_path)
-                    curr_size = stat.st_size
-                    curr_mtime = stat.st_mtime
+                    f_stat = os.stat(full_path)
+                    curr_size = f_stat.st_size
+                    curr_mtime = f_stat.st_mtime
                 except Exception:
                     continue
 

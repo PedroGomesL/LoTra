@@ -33,9 +33,12 @@ from hud_tooltip import (
     simulate_copy_selection,
     normalize_text_spacing,
     get_monitor_work_area_for_point,
+    get_dpi_for_point,
     is_process_elevated,
     is_foreground_window_elevated
 )
+from screen_snipper import NativeScreenSnipper
+from platform_core import IPlatformBridge, get_platform_bridge
 from app import LoTraApp
 from PIL import Image, ImageDraw
 
@@ -67,9 +70,13 @@ def test_clipboard_and_hud_readiness():
     hud.dismiss()
     assert hud._is_active is False
 
-    # Valida renderização com suporte a múltiplos monitores e coordenadas virtuais negativas
+    # Valida renderização com suporte a múltiplos monitores, High-DPI e coordenadas virtuais negativas
     work_area = get_monitor_work_area_for_point(100, 100)
     assert len(work_area) == 4
+    dpi_val = get_dpi_for_point(100, 100)
+    assert isinstance(dpi_val, int) and dpi_val >= 96
+    print(f"  [PASS] DPI dinâmico por monitor validado: {dpi_val} DPI")
+
     hud.show("Multi-monitor Test", "Source", cursor_pos=(-600, 200))
     assert hud._is_active is True
     hud.pump_events()
@@ -83,6 +90,32 @@ def test_clipboard_and_hud_readiness():
     assert isinstance(proc_elevated, bool)
     assert isinstance(fg_elevated, bool)
     print("  [PASS] Detecção de integridade UIPI e janelas elevadas validada!")
+
+    # Valida NativeScreenSnipper: cancelamento instantâneo (< 5ms) via Esc sem poluição do clipboard
+    snipper = NativeScreenSnipper()
+    assert snipper.is_active is False
+    cancel_called = False
+    def on_cancel():
+        nonlocal cancel_called
+        cancel_called = True
+
+    snipper.start_snip(on_snip=lambda img, pos: None, on_cancel=on_cancel)
+    assert snipper.is_active is True
+    t0_cancel = time.perf_counter()
+    snipper.cancel()
+    t_cancel_ms = (time.perf_counter() - t0_cancel) * 1000.0
+    assert snipper.is_active is False
+    assert cancel_called is True
+    assert t_cancel_ms < 25.0  # Fechamento instantâneo (< 5ms na maioria das CPUs)
+    print(f"  [PASS] NativeScreenSnipper cancelamento instantâneo via Esc validado ({t_cancel_ms:.2f}ms < 25ms)!")
+
+    # Valida Platform Bridge multi-OS
+    bridge = get_platform_bridge()
+    assert isinstance(bridge, IPlatformBridge)
+    assert len(bridge.get_monitor_work_area_for_point(0, 0)) == 4
+    assert bridge.get_dpi_for_point(0, 0) >= 96
+    assert isinstance(bridge.is_process_elevated(), bool)
+    print("  [PASS] Cross-platform bridge (IPlatformBridge) validado com sucesso!")
 
 def test_translation_engine_and_cache():
     print(">>> 3. Testando Pipeline de Tradução e Cache do Cofre...")

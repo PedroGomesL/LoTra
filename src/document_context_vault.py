@@ -77,6 +77,7 @@ class DocumentContextVault:
         conn.execute("PRAGMA mmap_size = 268435456;") # 256MB memory map
         conn.execute("PRAGMA temp_store = MEMORY;")
         conn.execute("PRAGMA foreign_keys = ON;")
+        conn.execute("PRAGMA auto_vacuum = INCREMENTAL;")
         try:
             with conn:
                 yield conn
@@ -105,45 +106,76 @@ class DocumentContextVault:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def vacuum_db(self) -> Dict[str, Any]:
-        """Executa VACUUM para desfragmentar o banco de dados e liberar espaço em disco."""
+    def vacuum_db(self, incremental: bool = False, pages: int = 0) -> Dict[str, Any]:
+        """Executa VACUUM ou PRAGMA incremental_vacuum para liberar páginas e desfragmentar o banco."""
         try:
+            if incremental:
+                with self._get_connection() as conn:
+                    if pages > 0:
+                        conn.execute(f"PRAGMA incremental_vacuum({pages});")
+                    else:
+                        conn.execute("PRAGMA incremental_vacuum;")
+                return {"success": True, "mode": "incremental"}
+
             conn = sqlite3.connect(self.db_path, timeout=15.0)
             conn.isolation_level = None
             try:
                 conn.execute("VACUUM;")
             finally:
                 conn.close()
-            return {"success": True}
+            return {"success": True, "mode": "full"}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     def get_database_size_bytes(self) -> Dict[str, int]:
         """Retorna o tamanho em bytes do banco principal, do arquivo WAL e do total."""
+        return self.get_storage_size_bytes()
+
+    def get_storage_size_bytes(self) -> Dict[str, int]:
+        """
+        Retorna o tamanho combinado em bytes:
+        - Banco de dados principal (.db)
+        - Log WAL (.db-wal)
+        - Diretório de thumbnails geradas (.png)
+        """
         db_size = os.path.getsize(self.db_path) if os.path.exists(self.db_path) else 0
         wal_path = f"{self.db_path}-wal"
         wal_size = os.path.getsize(wal_path) if os.path.exists(wal_path) else 0
+
+        # Diretório de thumbnails associado
+        thumb_dir = Path(self.db_path).parent / "thumbnails"
+        thumb_size = 0
+        if thumb_dir.exists():
+            for p in thumb_dir.glob("*.png"):
+                try:
+                    thumb_size += p.stat().st_size
+                except Exception:
+                    pass
+
         return {
             "db_bytes": db_size,
             "wal_bytes": wal_size,
-            "total_bytes": db_size + wal_size
+            "thumbnails_bytes": thumb_size,
+            "total_bytes": db_size + wal_size + thumb_size
         }
 
     def enforce_size_quota(self, max_size_mb: int = 500) -> Dict[str, Any]:
         """
-        Garante que o banco de dados + arquivo WAL não excedam a cota estipulada em megabytes.
+        Garante que o armazenamento combinado (DB + WAL + Thumbnails) não exceda a cota estipulada em megabytes.
         Caso o limite seja ultrapassado:
         1. Executa checkpoint TRUNCATE do WAL.
-        2. Remove as entradas mais antigas da tabela translation_cache segundo política LRU.
-        3. Executa VACUUM para recuperar os blocos liberados no sistema de arquivos.
+        2. Remove as entradas mais antigas da tabela translation_cache segundo política LRU (last_accessed_at).
+        3. Remove thumbnails antigas se ainda exceder a cota.
+        4. Executa incremental vacuum / vacuum para liberar páginas no sistema de arquivos.
         """
         quota_bytes = max_size_mb * 1024 * 1024
-        sizes = self.get_database_size_bytes()
+        sizes = self.get_storage_size_bytes()
         evicted_count = 0
+        evicted_thumbs = 0
 
         if sizes["total_bytes"] > quota_bytes:
             self.checkpoint_wal(mode="TRUNCATE")
-            sizes = self.get_database_size_bytes()
+            sizes = self.get_storage_size_bytes()
 
             if sizes["total_bytes"] > quota_bytes:
                 with self._get_connection() as conn:
@@ -154,21 +186,45 @@ class DocumentContextVault:
                         limit_evict = max(1, total_cached // 4)
                         cur.execute(
                             "DELETE FROM translation_cache WHERE cache_key IN "
-                            "(SELECT cache_key FROM translation_cache ORDER BY created_at ASC LIMIT ?)",
+                            "(SELECT cache_key FROM translation_cache ORDER BY COALESCE(last_accessed_at, created_at) ASC LIMIT ?)",
                             (limit_evict,)
                         )
                         evicted_count = cur.rowcount
 
-                self.vacuum_db()
+                self.vacuum_db(incremental=True)
                 self.checkpoint_wal(mode="TRUNCATE")
-                sizes = self.get_database_size_bytes()
+                sizes = self.get_storage_size_bytes()
+
+            # Descarte de thumbnails antigas se ainda estiver acima da cota combinada
+            if sizes["total_bytes"] > quota_bytes:
+                thumb_dir = Path(self.db_path).parent / "thumbnails"
+                if thumb_dir.exists():
+                    thumb_files = []
+                    for p in thumb_dir.glob("*.png"):
+                        try:
+                            thumb_files.append((p.stat().st_mtime, p))
+                        except Exception:
+                            pass
+                    thumb_files.sort(key=lambda x: x[0])
+                    for _, p in thumb_files[:max(1, len(thumb_files) // 3)]:
+                        try:
+                            p.unlink(missing_ok=True)
+                            evicted_thumbs += 1
+                        except Exception:
+                            pass
+                sizes = self.get_storage_size_bytes()
 
         return {
             "quota_mb": max_size_mb,
             "current_total_mb": round(sizes["total_bytes"] / (1024 * 1024), 2),
             "evicted_entries": evicted_count,
+            "evicted_thumbnails": evicted_thumbs,
             "under_quota": sizes["total_bytes"] <= quota_bytes
         }
+
+    def shutdown(self) -> Dict[str, Any]:
+        """Encerramento limpo da base de dados: executa checkpoint TRUNCATE do WAL."""
+        return self.checkpoint_wal(mode="TRUNCATE")
 
     def health_check(self) -> Dict[str, Any]:
         """
@@ -277,6 +333,17 @@ class DocumentContextVault:
                     VALUES (?, ?, ?, ?)
                     """, (version, name, time.time(), hashlib.sha256(name.encode()).hexdigest()))
 
+        # Garante retrocompatibilidade com bancos que já existiam antes da adição da coluna last_accessed_at
+        with self._get_connection() as conn:
+            try:
+                conn.execute("ALTER TABLE translation_cache ADD COLUMN last_accessed_at REAL;")
+            except Exception:
+                pass
+            try:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_trans_lru ON translation_cache(last_accessed_at);")
+            except Exception:
+                pass
+
     def _migration_1_initial(self, conn: sqlite3.Connection):
         conn.executescript("""
         CREATE TABLE IF NOT EXISTS documents (
@@ -337,11 +404,13 @@ class DocumentContextVault:
             latency_ms REAL,
             hit_count INTEGER DEFAULT 1,
             created_at REAL NOT NULL,
+            last_accessed_at REAL,
             FOREIGN KEY(doc_hash) REFERENCES documents(doc_hash) ON DELETE CASCADE
         );
 
         CREATE INDEX IF NOT EXISTS idx_doc_sections ON document_sections(doc_hash, page_start, page_end);
         CREATE INDEX IF NOT EXISTS idx_trans_doc ON translation_cache(doc_hash);
+        CREATE INDEX IF NOT EXISTS idx_trans_lru ON translation_cache(last_accessed_at);
         CREATE INDEX IF NOT EXISTS idx_scan_jobs_status ON scan_jobs(status);
 
         CREATE VIRTUAL TABLE IF NOT EXISTS fts_documents USING fts5(
@@ -599,7 +668,8 @@ class DocumentContextVault:
         with self._get_connection() as conn:
             row = conn.execute("SELECT translated_text FROM translation_cache WHERE cache_key = ?", (cache_key,)).fetchone()
             if row:
-                conn.execute("UPDATE translation_cache SET hit_count = hit_count + 1 WHERE cache_key = ?", (cache_key,))
+                now = time.time()
+                conn.execute("UPDATE translation_cache SET hit_count = hit_count + 1, last_accessed_at = ? WHERE cache_key = ?", (now, cache_key))
                 stored_val = row["translated_text"]
                 if self.enable_privacy:
                     return VaultProtector.decrypt_text(stored_val)
@@ -634,10 +704,11 @@ class DocumentContextVault:
 
             conn.execute("""
                 INSERT INTO translation_cache 
-                (cache_key, doc_hash, page_num, source_text, context_used, translated_text, model_id, latency_ms, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (cache_key, doc_hash, page_num, source_text, context_used, translated_text, model_id, latency_ms, created_at, last_accessed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(cache_key) DO UPDATE SET 
                     translated_text = excluded.translated_text,
                     latency_ms = excluded.latency_ms,
-                    hit_count = hit_count + 1
-            """, (cache_key, doc_hash, page_num, sec_source, sec_context, sec_trans, model_id, latency_ms, now))
+                    hit_count = hit_count + 1,
+                    last_accessed_at = excluded.last_accessed_at
+            """, (cache_key, doc_hash, page_num, sec_source, sec_context, sec_trans, model_id, latency_ms, now, now))
