@@ -208,6 +208,43 @@ class TestLoTraBugsAndUI(unittest.TestCase):
         clean_translation = "Os sistemas de interação humano-IA são tipicamente projetados para apoiar diretamente as tarefas humanas."
         self.assertTrue(pipeline._is_valid_translation(clean_translation), "Traduções legítimas devem ser aceitas normalmente.")
 
+    def test_llm_streaming_and_latency_optimizations(self):
+        """Valida as otimizações das Opções 1 e 2: streaming de tokens, dynamic num_predict e HUD progressivo."""
+        hud = HUDTooltip()
+        
+        # 1. Inicia o streaming do HUD e verifica estado inicial
+        hud.start_stream(cursor_pos=(500, 400))
+        self.assertTrue(hud._is_active)
+        self.assertTrue(hud._is_streaming)
+        self.assertEqual(hud._current_text, "...")
+
+        # 2. Emite chunks de tokens progressivos
+        hud.update_stream("A", "A")
+        self.assertEqual(hud._current_text, "A")
+        hud.update_stream(" separação", "A separação")
+        self.assertEqual(hud._current_text, "A separação")
+        hud.update_stream(" de poderes", "A separação de poderes")
+        self.assertEqual(hud._current_text, "A separação de poderes")
+
+        # 3. Finaliza o streaming
+        hud.finish_stream("A separação de poderes opera como um sistema de freios e contrapesos.", latency_ms=45.0, engine_name="Ollama (qwen2.5:1.5b)")
+        self.assertFalse(hud._is_streaming)
+        self.assertTrue(hud._is_active)
+        self.assertIn("separação de poderes", hud._current_text)
+
+        hud.dismiss()
+        self.assertFalse(hud._is_active)
+
+        # 4. Valida pipeline de tradução com callback de streaming
+        received_tokens = []
+        def stream_recorder(delta, full_so_far):
+            received_tokens.append(delta)
+
+        # Usando texto para validar que o callback de streaming recebe tokens da LLM ou fallback
+        res = self.pipeline.translate_text("hello world", stream_callback=stream_recorder)
+        self.assertTrue(len(received_tokens) > 0, "O callback de streaming deve receber o texto traduzido.")
+        self.assertEqual(res["translated_text"].lower().strip("!."), "olá mundo")
+
 def run_tests():
     suite = unittest.TestLoader().loadTestsFromTestCase(TestLoTraBugsAndUI)
     runner = unittest.TextTestRunner(verbosity=2)

@@ -216,7 +216,7 @@ class LoTraMainWindow:
         btn_bar = tk.Frame(main_box, bg=self.c_card_bg)
         btn_bar.pack(fill=tk.X, pady=(0, 8))
 
-        btn_translate = tk.Button(
+        self.btn_translate = tk.Button(
             btn_bar,
             text="Traduzir Texto",
             font=("Arial", 9, "bold"),
@@ -230,7 +230,7 @@ class LoTraMainWindow:
             cursor="hand2",
             command=self._do_manual_translate
         )
-        btn_translate.pack(side=tk.LEFT)
+        self.btn_translate.pack(side=tk.LEFT)
 
         btn_clear = tk.Button(
             btn_bar,
@@ -320,15 +320,30 @@ class LoTraMainWindow:
         btn_exit.pack(side=tk.RIGHT)
 
     def _do_manual_translate(self):
-        """Executa tradução manual do texto digitado no campo de teste."""
+        """Executa tradução manual do texto digitado no campo de teste com streaming responsivo."""
         raw_text = self.txt_input.get("1.0", tk.END).strip()
         if not raw_text:
             return
 
-        res = self.app.translate_text(raw_text)
+        self.txt_output.delete("1.0", tk.END)
+        self.lbl_stats.config(text="Traduzindo...")
+
+        def stream_cb(delta: str, full_so_far: str):
+            try:
+                self.txt_output.delete("1.0", tk.END)
+                self.txt_output.insert(tk.END, full_so_far)
+                self.txt_output.see(tk.END)
+                self.root.update_idletasks()
+            except Exception:
+                pass
+
+        try:
+            res = self.app.translate_text(raw_text, stream_callback=stream_cb)
+        except TypeError:
+            res = self.app.translate_text(raw_text)
+
         self.txt_output.delete("1.0", tk.END)
         self.txt_output.insert(tk.END, res["translated_text"])
-
         lat = res.get("latency_ms", 0.0)
         engine = res.get("engine_used", "LoTra Engine")
         self.lbl_stats.config(text=f"Latência: {lat:.1f}ms | {engine}")
@@ -357,9 +372,25 @@ class LoTraMainWindow:
         while not self.app._ui_queue.empty():
             try:
                 item = self.app._ui_queue.get_nowait()
-                if isinstance(item, dict) and item.get("_action") == "start_native_snip":
-                    self.app._handle_native_snip()
-                    continue
+                if isinstance(item, dict):
+                    act = item.get("_action")
+                    if act == "start_native_snip":
+                        self.app._handle_native_snip()
+                        continue
+                    elif act == "stream_start":
+                        self.app.hud.start_stream(cursor_pos=item.get("cursor_pos"))
+                        continue
+                    elif act == "stream_chunk":
+                        self.app.hud.update_stream(item.get("delta", ""), item.get("full_text", ""))
+                        continue
+                    elif act == "stream_end":
+                        r = item.get("res", {})
+                        self.app.hud.finish_stream(
+                            final_text=r.get("translated_text", ""),
+                            latency_ms=r.get("latency_ms", 0.0),
+                            engine_name=r.get("engine_used", "LoTra Engine")
+                        )
+                        continue
 
                 res = item
                 self.app.hud.show(
@@ -375,7 +406,7 @@ class LoTraMainWindow:
 
         self.app.hud.pump_events()
         if self.app._is_serving:
-            self.root.after(40, self.process_incoming_queue)
+            self.root.after(30, self.process_incoming_queue)
 
     def start_main_loop(self):
         """Inicia o loop visual da aplicação."""

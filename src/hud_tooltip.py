@@ -445,124 +445,55 @@ class HUDTooltip:
     def __init__(self):
         self._root = None
         self._window = None
+        self._main_frame = None
+        self._trans_label = None
         self._close_timer = None
         self._outside_poll_job = None
         self._is_active = False
+        self._is_streaming = False
+        self._current_text = ""
+        self._cursor_pos = (400, 300)
+        self._dpi_scale = 1.0
+        self._mon_left = 0
+        self._mon_top = 0
+        self._mon_right = 1920
+        self._mon_bottom = 1080
+        self._font_size = 11
 
-    def show(self, 
-             translated_text: str, 
-             source_text: str = "", 
-             latency_ms: float = 0.0, 
-             engine_name: str = "LoTra Engine",
-             timeout_sec: float = 0.0,
-             cursor_pos: Optional[tuple] = None):
-        """Exibe o HUD tooltip próximo ao cursor do mouse com layout alinhado à identidade visual."""
-        import tkinter as tk
+    def _update_geometry(self, display_text: str):
+        """Ajusta dimensões, wrap e posição da janela HUD dinamicamente respeitando limites do monitor."""
+        if not self._window or not self._trans_label:
+            return
 
-        # Se já existir uma janela aberta, fecha antes de abrir a nova
-        self.dismiss()
-
-        # Cria a janela raiz se necessário
-        if self._root is None:
-            self._root = tk.Tk()
-            self._root.withdraw()
-
-        window = tk.Toplevel(self._root)
-        self._window = window
-        self._is_active = True
-
-        # Janela de sobreposição (topmost e sem bordas do sistema)
-        window.overrideredirect(True)
-        window.attributes("-topmost", True)
-        window.attributes("-alpha", 0.97)
-
-        # Paleta de cores condizente com a nova logo da Lontra (Teal e Creme de Meio.dc.html)
-        bg_dark = "#0b2329"        # Fundo teal profundo
-        border_color = "#166a7d"   # Contorno suave teal
-        text_primary = "#f6f1e8"   # Texto creme da logo oficial
-
-        # Frame único minimalista com borda sutil e preenchimento confortável
-        main_frame = tk.Frame(window, bg=bg_dark, highlightbackground=border_color, highlightthickness=1, padx=14, pady=10)
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
-        # Normaliza o texto traduzido para evitar quebras abruptas e espaços em branco desnecessários
-        trans_display = normalize_text_spacing(translated_text)
-        trans_display = re.sub(r'\n\s*\n+', '\n\n', trans_display.strip())
-
-        # Obtém posição do cursor com suporte a múltiplos monitores
-        if cursor_pos is None and sys.platform == "win32":
-            pt = ctypes.wintypes.POINT()
-            ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
-            cx, cy = pt.x, pt.y
-        elif cursor_pos:
-            cx, cy = cursor_pos
-        else:
-            cx, cy = 400, 300
-
-        # Limites e área de trabalho real do monitor onde o cursor se encontra (suporte multi-monitor)
-        mon_left, mon_top, mon_right, mon_bottom = get_monitor_work_area_for_point(cx, cy)
-        mon_w = max(400, mon_right - mon_left)
-
-        # Escala dinâmica de DPI por monitor via GetDpiForMonitor
-        dpi = get_dpi_for_point(cx, cy)
-        dpi_scale = max(1.0, dpi / 96.0)
-        font_size = max(9, int(round(11 * dpi_scale)))
-
-        # Ajuste dinâmico de largura de quebra para garantir tipografia e proporções ideais
-        char_len = len(trans_display)
-        if char_len < 45 and "\n" not in trans_display:
-            wrap_width = 0  # Texto curto em linha única
+        char_len = len(display_text)
+        mon_w = max(400, self._mon_right - self._mon_left)
+        if char_len < 45 and "\n" not in display_text:
+            wrap_width = 0
         elif char_len < 160:
-            wrap_width = int(440 * dpi_scale)
+            wrap_width = int(440 * self._dpi_scale)
         elif char_len < 450:
-            wrap_width = int(540 * dpi_scale)
+            wrap_width = int(540 * self._dpi_scale)
         else:
-            wrap_width = int(620 * dpi_scale)
+            wrap_width = int(620 * self._dpi_scale)
 
-        # Não excede a largura utilizável do monitor atual
-        max_wrap = max(int(360 * dpi_scale), mon_w - int(80 * dpi_scale))
+        max_wrap = max(int(360 * self._dpi_scale), mon_w - int(80 * self._dpi_scale))
         if wrap_width > 0:
             wrap_width = min(wrap_width, max_wrap)
 
-        # Texto traduzido com fonte Times New Roman serifada, elegante e compacta escalada por DPI
-        trans_label = tk.Label(
-            main_frame,
-            text=trans_display,
-            font=("Times New Roman", font_size),
-            fg=text_primary,
-            bg=bg_dark,
-            wraplength=wrap_width,
-            justify=tk.LEFT,
-            padx=2,
-            pady=2
-        )
-        trans_label.pack(anchor="w")
+        self._trans_label.config(text=display_text, wraplength=wrap_width)
+        self._window.update_idletasks()
 
-        # Clicar em qualquer parte da janela copia a tradução e fecha
-        def on_click(event):
-            set_windows_clipboard_text(trans_display)
-            self.dismiss()
-
-        window.bind("<Button-1>", on_click)
-        main_frame.bind("<Button-1>", on_click)
-        trans_label.bind("<Button-1>", on_click)
-
-        # Fecha com Esc no Tkinter
-        window.bind("<Escape>", lambda e: self.dismiss())
-
-        # Posicionamento inteligente próximo ao cursor ou centralizado
-        window.update_idletasks()
-        win_w = window.winfo_reqwidth()
-        win_h = window.winfo_reqheight()
+        win_w = self._window.winfo_reqwidth()
+        win_h = self._window.winfo_reqheight()
+        cx, cy = self._cursor_pos
 
         pos_x = cx + 15
         pos_y = cy + 18
 
-        # Clamping com suporte total a múltiplos monitores (incluindo coordenadas virtuais negativas)
-        min_x = mon_left + 15
-        max_x = mon_right - win_w - 15
-        min_y = mon_top + 15
-        max_y = mon_bottom - win_h - 15
+        min_x = self._mon_left + 15
+        max_x = self._mon_right - win_w - 15
+        min_y = self._mon_top + 15
+        max_y = self._mon_bottom - win_h - 15
 
         if pos_x > max_x:
             pos_x = max(min_x, cx - win_w - 15) if (cx - win_w - 15) >= min_x else max_x
@@ -574,15 +505,127 @@ class HUDTooltip:
         if pos_y < min_y:
             pos_y = min_y
 
-        window.geometry(f"+{pos_x}+{pos_y}")
+        self._window.geometry(f"+{pos_x}+{pos_y}")
 
-        # Agendamento de auto-dismiss apenas se explicitamente configurado > 0 (padrão é 0 = sem auto-dismiss)
-        if timeout_sec > 0:
-            self._close_timer = window.after(int(timeout_sec * 1000), self.dismiss)
+    def start_stream(self, cursor_pos: Optional[tuple] = None):
+        """Inicia overlay flutuante imediatamente para streaming em tempo real com TTFT ultra-baixo."""
+        import tkinter as tk
 
-        # Inicia monitoramento de clique fora da box (garante fechamento ao clicar em qualquer outro app/desktop)
+        self.dismiss()
+
+        if self._root is None:
+            self._root = tk.Tk()
+            self._root.withdraw()
+
+        window = tk.Toplevel(self._root)
+        self._window = window
+        self._is_active = True
+        self._is_streaming = True
+        self._current_text = "..."
+
+        window.overrideredirect(True)
+        window.attributes("-topmost", True)
+        window.attributes("-alpha", 0.97)
+
+        bg_dark = "#0b2329"
+        border_color = "#166a7d"
+        text_primary = "#f6f1e8"
+
+        self._main_frame = tk.Frame(window, bg=bg_dark, highlightbackground=border_color, highlightthickness=1, padx=14, pady=10)
+        self._main_frame.pack(fill=tk.BOTH, expand=True)
+
+        if cursor_pos is None and sys.platform == "win32":
+            pt = ctypes.wintypes.POINT()
+            ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
+            cx, cy = pt.x, pt.y
+        elif cursor_pos:
+            cx, cy = cursor_pos
+        else:
+            cx, cy = 400, 300
+
+        self._cursor_pos = (cx, cy)
+        self._mon_left, self._mon_top, self._mon_right, self._mon_bottom = get_monitor_work_area_for_point(cx, cy)
+        dpi = get_dpi_for_point(cx, cy)
+        self._dpi_scale = max(1.0, dpi / 96.0)
+        self._font_size = max(9, int(round(11 * self._dpi_scale)))
+
+        self._trans_label = tk.Label(
+            self._main_frame,
+            text=self._current_text,
+            font=("Times New Roman", self._font_size),
+            fg=text_primary,
+            bg=bg_dark,
+            wraplength=int(320 * self._dpi_scale),
+            justify=tk.LEFT,
+            padx=2,
+            pady=2
+        )
+        self._trans_label.pack(anchor="w")
+
+        def on_click(event):
+            if self._current_text and self._current_text != "...":
+                set_windows_clipboard_text(self._current_text)
+            self.dismiss()
+
+        window.bind("<Button-1>", on_click)
+        self._main_frame.bind("<Button-1>", on_click)
+        self._trans_label.bind("<Button-1>", on_click)
+        window.bind("<Escape>", lambda e: self.dismiss())
+
+        self._update_geometry(self._current_text)
+
         if sys.platform == "win32":
             self._outside_poll_job = window.after(180, self._check_click_outside)
+
+    def update_stream(self, token_chunk: str, full_text_so_far: str):
+        """Atualiza dinamicamente o texto do HUD conforme novos tokens chegam via streaming."""
+        if not self._is_active or not self._window or not self._trans_label:
+            return
+
+        clean_text = normalize_text_spacing(full_text_so_far)
+        clean_text = re.sub(r'\n\s*\n+', '\n\n', clean_text.strip())
+        if not clean_text:
+            return
+
+        self._current_text = clean_text
+        self._update_geometry(clean_text)
+
+    def finish_stream(self, final_text: str, latency_ms: float = 0.0, engine_name: str = ""):
+        """Finaliza a sessão de streaming fixando o texto limpo final e reconfigurando clipboard."""
+        if not self._is_active or not self._window or not self._trans_label:
+            return
+
+        self._is_streaming = False
+        clean_text = normalize_text_spacing(final_text) if final_text else self._current_text
+        clean_text = re.sub(r'\n\s*\n+', '\n\n', clean_text.strip())
+        if not clean_text:
+            clean_text = self._current_text
+
+        self._current_text = clean_text
+        self._update_geometry(clean_text)
+
+        def on_click(event):
+            set_windows_clipboard_text(clean_text)
+            self.dismiss()
+
+        self._window.bind("<Button-1>", on_click)
+        if self._main_frame:
+            self._main_frame.bind("<Button-1>", on_click)
+        if self._trans_label:
+            self._trans_label.bind("<Button-1>", on_click)
+
+    def show(self, 
+             translated_text: str, 
+             source_text: str = "", 
+             latency_ms: float = 0.0, 
+             engine_name: str = "LoTra Engine",
+             timeout_sec: float = 0.0,
+             cursor_pos: Optional[tuple] = None):
+        """Exibe o HUD tooltip próximo ao cursor do mouse com layout alinhado à identidade visual."""
+        self.start_stream(cursor_pos=cursor_pos)
+        self.finish_stream(translated_text, latency_ms=latency_ms, engine_name=engine_name)
+        if timeout_sec > 0 and self._window:
+            self._close_timer = self._window.after(int(timeout_sec * 1000), self.dismiss)
 
     def _check_click_outside(self):
         """Monitora periodicamente se o usuário clicou fora da janela do HUD para fechá-la imediatamente."""
@@ -621,6 +664,9 @@ class HUDTooltip:
     def dismiss(self):
         """Fecha o tooltip atual com segurança."""
         self._is_active = False
+        self._is_streaming = False
+        self._trans_label = None
+        self._main_frame = None
         if self._window is not None:
             try:
                 if self._close_timer:

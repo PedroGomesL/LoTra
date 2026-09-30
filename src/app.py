@@ -15,7 +15,7 @@ import queue
 import threading
 import ctypes
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 
 # Adiciona diretório src ao sys.path se necessário
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -80,9 +80,18 @@ class LoTraApp:
         """Executa reconhecimento óptico de caracteres usando o Windows Media OCR nativo."""
         return self.ocr_engine.recognize_file(image_path)
 
-    def translate_text(self, text: str, doc_hash: str = "quick_translate", target_sla_ms: float = 250.0) -> Dict[str, Any]:
-        """Traduz texto utilizando o pipeline adaptativo com cache local."""
-        return self.translator.translate_text(text=text, doc_hash=doc_hash, target_sla_ms=target_sla_ms)
+    def translate_text(self, 
+                       text: str, 
+                       doc_hash: str = "quick_translate", 
+                       target_sla_ms: float = 250.0,
+                       stream_callback: Optional[Callable[[str, str], None]] = None) -> Dict[str, Any]:
+        """Traduz texto utilizando o pipeline adaptativo com streaming e cache local."""
+        return self.translator.translate_text(
+            text=text, 
+            doc_hash=doc_hash, 
+            target_sla_ms=target_sla_ms,
+            stream_callback=stream_callback
+        )
 
     def process_image(self, image_path: str | Path) -> Dict[str, Any]:
         """Pipeline ponta a ponta: OCR de imagem + Tradução do texto extraído."""
@@ -108,25 +117,66 @@ class LoTraApp:
         }
 
     def _dispatch_translation(self, text: str):
-        """Processa e despacha tradução para o HUD de forma thread-safe."""
+        """Processa e despacha tradução para o HUD com streaming em tempo real e de forma thread-safe."""
         clean_text = normalize_text_spacing(text)
         if not clean_text:
             print("[LoTra HUD] Nenhuma seleção ou texto detectado.")
             return
 
-        res = self.translate_text(clean_text)
+        cursor_pos = None
+        if sys.platform == "win32":
+            try:
+                pt = ctypes.wintypes.POINT()
+                ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
+                cursor_pos = (pt.x, pt.y)
+            except Exception:
+                pass
 
-        if threading.current_thread() is not threading.main_thread():
-            self._ui_queue.put(res)
+        # 1. Checa se o texto já está em cache local ACID (< 1ms)
+        cached = self.vault.lookup_cache("quick_translate", clean_text)
+        if cached and not (len(clean_text) > 3 and cached.strip().lower() == clean_text.lower()):
+            res = self.translate_text(clean_text)
+            res["cursor_pos"] = cursor_pos
+            if threading.current_thread() is not threading.main_thread():
+                self._ui_queue.put(res)
+            else:
+                self.hud.show(
+                    translated_text=res["translated_text"],
+                    source_text=res["source_text"],
+                    latency_ms=res["latency_ms"],
+                    engine_name=res["engine_used"],
+                    timeout_sec=0.0,
+                    cursor_pos=cursor_pos
+                )
             return
 
-        self.hud.show(
-            translated_text=res["translated_text"],
-            source_text=res["source_text"],
-            latency_ms=res["latency_ms"],
-            engine_name=res["engine_used"],
-            timeout_sec=0.0
-        )
+        # 2. Se for inferência via LLM, ativa streaming em tempo real para TTFT imediato
+        if threading.current_thread() is not threading.main_thread():
+            self._ui_queue.put({"_action": "stream_start", "cursor_pos": cursor_pos})
+            
+            def stream_cb(delta: str, full_so_far: str):
+                self._ui_queue.put({
+                    "_action": "stream_chunk",
+                    "delta": delta,
+                    "full_text": full_so_far,
+                    "cursor_pos": cursor_pos
+                })
+
+            res = self.translate_text(clean_text, stream_callback=stream_cb)
+            res["cursor_pos"] = cursor_pos
+            self._ui_queue.put({"_action": "stream_end", "res": res})
+        else:
+            self.hud.start_stream(cursor_pos=cursor_pos)
+            def stream_cb(delta: str, full_so_far: str):
+                self.hud.update_stream(delta, full_so_far)
+                self.hud.pump_events()
+
+            res = self.translate_text(clean_text, stream_callback=stream_cb)
+            self.hud.finish_stream(
+                final_text=res["translated_text"],
+                latency_ms=res.get("latency_ms", 0.0),
+                engine_name=res.get("engine_used", "LoTra Engine")
+            )
 
     def _display_hud_notice(self, notice_text: str):
         """Exibe avisos informativos do sistema (ex: UIPI / privilégios) no HUD."""
@@ -307,9 +357,25 @@ class LoTraApp:
                 while not self._ui_queue.empty():
                     try:
                         item = self._ui_queue.get_nowait()
-                        if isinstance(item, dict) and item.get("_action") == "start_native_snip":
-                            self._handle_native_snip()
-                            continue
+                        if isinstance(item, dict):
+                            act = item.get("_action")
+                            if act == "start_native_snip":
+                                self._handle_native_snip()
+                                continue
+                            elif act == "stream_start":
+                                self.hud.start_stream(cursor_pos=item.get("cursor_pos"))
+                                continue
+                            elif act == "stream_chunk":
+                                self.hud.update_stream(item.get("delta", ""), item.get("full_text", ""))
+                                continue
+                            elif act == "stream_end":
+                                r = item.get("res", {})
+                                self.hud.finish_stream(
+                                    final_text=r.get("translated_text", ""),
+                                    latency_ms=r.get("latency_ms", 0.0),
+                                    engine_name=r.get("engine_used", "LoTra Engine")
+                                )
+                                continue
 
                         res = item
                         self.hud.show(

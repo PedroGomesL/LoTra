@@ -15,7 +15,7 @@ import socket
 import urllib.request
 import urllib.error
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 
 from document_context_vault import DocumentContextVault
 from adaptive_engine_orchestrator import AdaptiveEngineOrchestrator, HardwareProfiler
@@ -950,22 +950,32 @@ class TranslationPipeline:
                 
         return True
 
-    def _query_ollama(self, model: str, prompt: str, timeout: float = 25.0) -> Optional[str]:
-        """Tenta comunicação local com Ollama se o servidor estiver ativo com proteção anti-loop."""
+    def _query_ollama(self, 
+                      model: str, 
+                      prompt: str, 
+                      timeout: float = 25.0,
+                      stream_callback: Optional[Callable[[str, str], None]] = None,
+                      dynamic_predict: Optional[int] = None) -> Optional[str]:
+        """Tenta comunicação local com Ollama com streaming e otimizações de baixa latência."""
         if not self._is_ollama_available():
             return None
 
         endpoint = f"{self.ollama_url}/api/generate"
+        predict_tokens = dynamic_predict if dynamic_predict is not None else 512
+        use_stream = stream_callback is not None
+
         payload = json.dumps({
             "model": model,
             "prompt": prompt,
-            "stream": False,
+            "stream": use_stream,
+            "keep_alive": "15m",
             "options": {
                 "temperature": 0.15,
                 "top_p": 0.9,
                 "repeat_penalty": 1.18,
                 "repeat_last_n": 64,
-                "num_predict": 1024
+                "num_ctx": 512,
+                "num_predict": predict_tokens
             }
         }).encode("utf-8")
 
@@ -978,8 +988,32 @@ class TranslationPipeline:
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 if resp.status == 200:
-                    data = json.loads(resp.read().decode("utf-8"))
-                    res = data.get("response", "").strip()
+                    if not use_stream:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        res = data.get("response", "").strip()
+                    else:
+                        tokens = []
+                        for line in resp:
+                            if not line:
+                                continue
+                            try:
+                                chunk = json.loads(line.decode("utf-8"))
+                            except Exception:
+                                continue
+                            tok = chunk.get("response", "")
+                            if tok:
+                                tokens.append(tok)
+                                full_so_far = "".join(tokens)
+                                clean_disp = full_so_far
+                                for pfx in ['"Tradução:', '“Tradução:', 'Tradução:', 'Tradução :']:
+                                    if clean_disp.startswith(pfx):
+                                        clean_disp = clean_disp[len(pfx):].lstrip()
+                                if stream_callback:
+                                    stream_callback(tok, clean_disp)
+                            if chunk.get("done", False):
+                                break
+                        res = "".join(tokens).strip()
+
                     if res:
                         # Limpa possíveis aspas ou preâmbulos desnecessários gerados pelo modelo
                         if (res.startswith('"') and res.endswith('"')) or (res.startswith("“") and res.endswith("”")):
@@ -1000,13 +1034,14 @@ class TranslationPipeline:
                        text: str, 
                        doc_hash: str = "ad_hoc_query", 
                        page_num: int = 1,
-                       target_sla_ms: float = 250.0) -> Dict[str, Any]:
+                       target_sla_ms: float = 250.0,
+                       stream_callback: Optional[Callable[[str, str], None]] = None) -> Dict[str, Any]:
         """
         Executa tradução 100% local com:
         1. Normalização de espaçamento e quebras duras de linha de PDFs.
         2. Decisão de modelo baseada em hardware real e modelos do Ollama instalados.
         3. Verificação de cache ultrarrápido no DocumentContextVault (< 1ms).
-        4. Inferência local via Ollama LLM (Qwen 2.5 / Llama 3.2) dinamicamente detectado.
+        4. Inferência local via Ollama LLM com streaming e otimização de latência (num_ctx 512, keep_alive 15m).
         5. Fallback 100% offline via LoTra Built-in Offline Translator (Glossário e Regras).
         6. Gravação no cache ACID local em SQLite.
         7. Retorno estruturado com métricas e metadados.
@@ -1026,6 +1061,8 @@ class TranslationPipeline:
 
         # 1. Determina tamanho e tipo do texto
         word_count = len(raw_text.split())
+        dynamic_predict = max(48, min(512, int(word_count * 2.2)))
+
         if word_count <= 2:
             text_type = "word"
         elif word_count <= 8:
@@ -1068,6 +1105,8 @@ class TranslationPipeline:
                 cached = self.vault.lookup_cache(doc_hash=doc_hash, source_text=raw_text, model_id=selected_model)
                 if cached and not (len(raw_text) > 3 and cached.strip().lower() == raw_text.lower()):
                     latency = (time.perf_counter() - t0) * 1000.0
+                    if stream_callback:
+                        stream_callback(cached, cached)
                     return {
                         "source_text": raw_text,
                         "translated_text": cached,
@@ -1088,7 +1127,13 @@ class TranslationPipeline:
                 else:
                     prompt = f"{system_instruction}\n\nTexto: {raw_text}"
 
-                translated_result = self._query_ollama(actual_ollama_model, prompt, timeout=20.0)
+                translated_result = self._query_ollama(
+                    actual_ollama_model, 
+                    prompt, 
+                    timeout=20.0,
+                    stream_callback=stream_callback,
+                    dynamic_predict=dynamic_predict
+                )
                 if translated_result:
                     engine_used = f"Ollama Local ({actual_ollama_model})"
 
@@ -1097,6 +1142,8 @@ class TranslationPipeline:
             cached = self.vault.lookup_cache(doc_hash=doc_hash, source_text=raw_text, model_id=selected_model)
             if cached and not (len(raw_text) > 3 and cached.strip().lower() == raw_text.lower()):
                 latency = (time.perf_counter() - t0) * 1000.0
+                if stream_callback:
+                    stream_callback(cached, cached)
                 return {
                     "source_text": raw_text,
                     "translated_text": cached,
@@ -1118,6 +1165,9 @@ class TranslationPipeline:
         if not translated_result:
             translated_result = OfflineContextTranslator.translate(raw_text, context_prompt)
             engine_used = "LoTra Built-in Offline Translator"
+
+        if translated_result and stream_callback:
+            stream_callback(translated_result, translated_result)
 
 
         latency = (time.perf_counter() - t0) * 1000.0
