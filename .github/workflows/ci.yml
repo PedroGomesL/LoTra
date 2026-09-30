@@ -42,6 +42,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pytest pyinstaller
 
+      - name: Run Unit Tests
+        run: |
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            xvfb-run -a python -m unittest discover tests/unit
+          else
+            python -m unittest discover tests/unit
+          fi
+        shell: bash
+
+      - name: Run Academic PDF Simulation Tests
+        run: |
+          python -m unittest discover tests/simulation
+        shell: bash
+
       - name: Run Architecture & Resilient Vault Tests
         run: |
           if [ "${{ runner.os }}" = "Linux" ]; then

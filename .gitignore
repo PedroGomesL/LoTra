@@ -118,9 +118,6 @@ $RECYCLE.BIN/
 *.local
 *.bak
 *.orig
-*.swp
-*.swo
-*~
 *.user
 *.suo
 .env.local
@@ -130,3 +127,5 @@ user_data/
 scratch/
 test_vault.db*
 isolated_appdata/
+local_corpus/
+.local_pdf_path

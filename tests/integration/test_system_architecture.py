@@ -186,7 +186,7 @@ def test_adaptive_orchestrator():
     orch_fast = AdaptiveEngineOrchestrator(target_latency_ms=250.0)
     
     # Teste A: Palavra sob baixo uso na CPU (Ryzen 4800HS)
-    rec_word_cpu = orch_fast.select_optimal_pipeline(text_type="word", simulated_cpu_stress=15.0, force_hardware="cpu")
+    rec_word_cpu = orch_fast.select_optimal_pipeline(text_type="word", simulated_cpu_stress=15.0, simulated_ram_stress=20.0, force_hardware="cpu")
     print(f"Cenário 1 (Palavra / CPU Idle / SLA 250ms):")
     print(f"  Escolhido: {rec_word_cpu['ocr_name']} + {rec_word_cpu['model_name']}")
     print(f"  Latência Total Estimada: {rec_word_cpu['predicted_total_ms']} ms | Qualidade: {rec_word_cpu['combined_quality_score']}/10")

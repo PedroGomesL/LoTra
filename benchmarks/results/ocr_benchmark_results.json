@@ -1,0 +1,273 @@
+[
+  {
+    "id": "w1",
+    "type": "word/idiom",
+    "ground_truth": "His unflinching resolve impressed everyone.",
+    "target_term": "unflinching",
+    "digital": {
+      "extracted": "His unflinching resolve impressed evelyone.",
+      "inference_ms": 26.9403,
+      "pipeline_ms": 177.024,
+      "cer": 0.023255813953488372,
+      "wer": 0.2,
+      "accuracy_pct": 97.67441860465115,
+      "target_found": true
+    },
+    "scanned": {
+      "extracted": "Book Vocabulary EntiY His unflinching resolve impressed everyone.",
+      "inference_ms": 28.770100000000003,
+      "pipeline_ms": 195.3112,
+      "cer": 0.5116279069767442,
+      "wer": 0.6,
+      "accuracy_pct": 48.837209302325576,
+      "target_found": true
+    }
+  },
+  {
+    "id": "w2",
+    "type": "word/idiom",
+    "ground_truth": "Finding that rare edition was pure serendipity.",
+    "target_term": "serendipity",
+    "digital": {
+      "extracted": "Finding that rare edition was pure serendipity.",
+      "inference_ms": 24.1785,
+      "pipeline_ms": 177.42090000000002,
+      "cer": 0.0,
+      "wer": 0.0,
+      "accuracy_pct": 100.0,
+      "target_found": true
+    },
+    "scanned": {
+      "extracted": "Book Vocabulary Entty Finding that rare edition was pure serendipity.",
+      "inference_ms": 27.2081,
+      "pipeline_ms": 187.2821,
+      "cer": 0.46808510638297873,
+      "wer": 0.42857142857142855,
+      "accuracy_pct": 53.191489361702125,
+      "target_found": true
+    }
+  },
+  {
+    "id": "w3",
+    "type": "word/idiom",
+    "ground_truth": "The very idea that he had cheated was preposterous.",
+    "target_term": "preposterous",
+    "digital": {
+      "extracted": "The veryâ€¢ idea that he had cheated was preposterous.",
+      "inference_ms": 25.323500000000003,
+      "pipeline_ms": 180.037,
+      "cer": 0.058823529411764705,
+      "wer": 0.1111111111111111,
+      "accuracy_pct": 94.11764705882352,
+      "target_found": true
+    },
+    "scanned": {
+      "extracted": "Book Vocabulmy Ent1Y The very idea that he had cheated was preposterous.",
+      "inference_ms": 26.0271,
+      "pipeline_ms": 193.1602,
+      "cer": 0.4117647058823529,
+      "wer": 0.3333333333333333,
+      "accuracy_pct": 58.82352941176471,
+      "target_found": true
+    }
+  },
+  {
+    "id": "w4",
+    "type": "word/idiom",
+    "ground_truth": "Fame in the modern era is often ephemeral.",
+    "target_term": "ephemeral",
+    "digital": {
+      "extracted": "Fame in the modem era is often ephemeral.",
+      "inference_ms": 24.4938,
+      "pipeline_ms": 177.02620000000002,
+      "cer": 0.047619047619047616,
+      "wer": 0.125,
+      "accuracy_pct": 95.23809523809523,
+      "target_found": true
+    },
+    "scanned": {
+      "extracted": "Book Vocabulary Entty Fame in the modem era is often ephemeral.",
+      "inference_ms": 26.931800000000003,
+      "pipeline_ms": 194.0069,
+      "cer": 0.5714285714285714,
+      "wer": 0.5,
+      "accuracy_pct": 42.85714285714286,
+      "target_found": true
+    }
+  },
+  {
+    "id": "i1",
+    "type": "word/idiom",
+    "ground_truth": "I decided I had to bite the bullet and finish the report tonight.",
+    "target_term": "bite the bullet",
+    "digital": {
+      "extracted": "I decided I had to bite the bullet and finish the repolt tonight.",
+      "inference_ms": 26.6765,
+      "pipeline_ms": 184.22240000000002,
+      "cer": 0.015384615384615385,
+      "wer": 0.07692307692307693,
+      "accuracy_pct": 98.46153846153847,
+      "target_found": true
+    },
+    "scanned": {
+      "extracted": "Book Vocabulary EntiY I decided I had to bite the bullet and finish the repolt tonight.",
+      "inference_ms": 28.907600000000002,
+      "pipeline_ms": 234.3005,
+      "cer": 0.35384615384615387,
+      "wer": 0.3076923076923077,
+      "accuracy_pct": 64.61538461538461,
+      "target_found": true
+    }
+  },
+  {
+    "id": "i2",
+    "type": "word/idiom",
+    "ground_truth": "Her analysis of the book really hit the nail on the head.",
+    "target_term": "hit the nail on the head",
+    "digital": {
+      "extracted": "Her analysis of the book really hit the nail on the head.",
+      "inference_ms": 25.1663,
+      "pipeline_ms": 172.79690000000002,
+      "cer": 0.0,
+      "wer": 0.0,
+      "accuracy_pct": 100.0,
+      "target_found": true
+    },
+    "scanned": {
+      "extracted": "Book Vocabulary EntiY Her analysis of the book really hit the nail on the head.",
+      "inference_ms": 27.602500000000003,
+      "pipeline_ms": 196.2551,
+      "cer": 0.38596491228070173,
+      "wer": 0.25,
+      "accuracy_pct": 61.40350877192983,
+      "target_found": true
+    }
+  },
+  {
+    "id": "i3",
+    "type": "word/idiom",
+    "ground_truth": "We've been reading for five hours, let's call it a day.",
+    "target_term": "call it a day",
+    "digital": {
+      "extracted": "We've been reading for five hours, let's call it a day.",
+      "inference_ms": 25.195700000000002,
+      "pipeline_ms": 201.1566,
+      "cer": 0.0,
+      "wer": 0.0,
+      "accuracy_pct": 100.0,
+      "target_found": true
+    },
+    "scanned": {
+      "extracted": "Book Vocabulary Entty We've been reading for five hours, let's call it a day.",
+      "inference_ms": 31.997700000000002,
+      "pipeline_ms": 196.8059,
+      "cer": 0.4,
+      "wer": 0.2727272727272727,
+      "accuracy_pct": 60.0,
+      "target_found": true
+    }
+  },
+  {
+    "id": "i4",
+    "type": "word/idiom",
+    "ground_truth": "When building cryogenic attenuators, you cannot cut corners.",
+    "target_term": "cut corners",
+    "digital": {
+      "extracted": "\\Vhen building clyogenic attenuators, you cannot cut comers.",
+      "inference_ms": 25.003,
+      "pipeline_ms": 177.71550000000002,
+      "cer": 0.08333333333333333,
+      "wer": 0.375,
+      "accuracy_pct": 91.66666666666666,
+      "target_found": false
+    },
+    "scanned": {
+      "extracted": "Book Vocabulary Entty building cryogenic attenuators, you cannot cut comers.",
+      "inference_ms": 29.505200000000002,
+      "pipeline_ms": 197.23420000000002,
+      "cer": 0.36666666666666664,
+      "wer": 0.5,
+      "accuracy_pct": 63.33333333333333,
+      "target_found": false
+    }
+  },
+  {
+    "id": "p1",
+    "type": "paragraph",
+    "ground_truth": "It was a bright cold day in April, and the clocks were striking thirteen. Winston Smith, his chin nuzzled into his breast in an effort to escape the vile wind, slipped quickly through the glass doors of Victory Mansions, though not quickly enough to prevent a swirl of gritty dust from entering along with him.",
+    "target_term": "Winston Smith",
+    "digital": {
+      "extracted": "It was a bright cold day in April, and the clocks were striking thirteen. Winston Smith, his chin nuzzled into his breast in an effort to escape the vile Wind, slipped quickly through the glass doors of Victory Mansions, though not quickly enough to prevent a swirl of gritty dust from entering along with him.",
+      "inference_ms": 45.7485,
+      "pipeline_ms": 195.2105,
+      "cer": 0.0032258064516129032,
+      "wer": 0.01818181818181818,
+      "accuracy_pct": 99.67741935483872,
+      "target_found": true
+    },
+    "scanned": {
+      "extracted": "It was a bright cold day in April, and the clocks were striking thirteen. Winston Smith, his chin nuzzled into his breast in an effort to escape the vile Wind, slipped quickly through the glass doors of Victory Mansions, though not quickly enough to prevent a swirl of gritty dust from entering along with him.",
+      "inference_ms": 48.8746,
+      "pipeline_ms": 229.8658,
+      "cer": 0.0032258064516129032,
+      "wer": 0.01818181818181818,
+      "accuracy_pct": 99.67741935483872,
+      "target_found": true
+    }
+  },
+  {
+    "id": "p2",
+    "type": "paragraph",
+    "ground_truth": "Neural networks rely on backpropagation to minimize the objective loss function across high-dimensional parameter spaces. However, vanishing gradients and overfitting remain persistent bottlenecks when training deep architectures without proper residual connections and normalization layers.",
+    "target_term": "backpropagation",
+    "digital": {
+      "extracted": "Neural networks rely on backpropagation to minimize the objective loss function across high-dimensional parameter spaces. However, vanishing gradients and overfitting remain persistent bottlenecks when training deep architectures without proper residual connections and normalization layers.",
+      "inference_ms": 44.1877,
+      "pipeline_ms": 197.21710000000002,
+      "cer": 0.0,
+      "wer": 0.0,
+      "accuracy_pct": 100.0,
+      "target_found": true
+    },
+    "scanned": {
+      "extracted": "Neural networks rely on backpropagation to minimize the objective loss function across high-dimensional parameter spaces. However, vanishing gradients and overfitting remain persistent bottlenecks when training deep architectures without proper residual connections and normalization layers.",
+      "inference_ms": 51.3301,
+      "pipeline_ms": 225.4906,
+      "cer": 0.0,
+      "wer": 0.0,
+      "accuracy_pct": 100.0,
+      "target_found": true
+    }
+  },
+  {
+    "id": "a4_complex_page",
+    "type": "complex_a4_mixed_diagram",
+    "ground_truth": "Cryogenic Microwave Routing and Scalability Bottlenecks in Superconducting Quantum Processors Superconducting quantum processors demand sub-20 millikelvin operational environments to maintain qubit coherence against thermal fluctuations. In this work, we analyze high-density coaxial microwave line routing through cryogenic thermal stages, identifying anomalous cross-coupling and passive attenuation limits for fault-tolerant architectures. The implementation of large-scale fault-tolerant quantum computers represents one of the most demanding engineering challenges in contemporary physics. Superconducting circuits based on transmon qubits have achieved remarkable milestones, including quantum computational supremacy and error detection thresholds. However, scaling beyond several hundred physical qubits introduces a severe bottleneck: the interconnect problem. Each transmon requires dedicated coaxial microwave lines for XY control, flux bias tuning, and dispersive readout through coupled coplanar waveguide resonators. Room Temp (300K): Pulse Arbitrary Waveform Generator 4K Stage: High-Density Attenuator Block (-20dB) Still Stage (0.8K): Low-Noise Cryo-Filter Cold Plate (100mK): Thermal Heat Sink Braid Mixing Chamber (15mK): Superconducting Transmon Processor Dispersive Readout Coplanar Resonator Line At millikelvin temperatures inside dilution refrigerators, available cooling power is drastically limited. At the 4 Kelvin plate, cooling power reaches roughly 1.5 Watts, but drops exponentially to less than 20 microwatts at the mixing chamber plate (15 mK). Every physical coaxial line conducts parasitic thermal energy and dissipates active microwave power. Thermal anchoring using bulk cryogenic attenuators is necessary, yet physical space and thermal budgets rapidly saturate as qubit counts scale toward commercial utility. Figure 1: Multi-stage cryogenic attenuation and microwave interconnect routing inside the dilution refrigerator assembly.",
+    "target_term": "Cryogenic Microwave Routing",
+    "digital": {
+      "extracted": "PHYSICAL APPLIED ADVANCED QUANTUM HARDWARE Cryogenic Microwave Routing and Scalability Bottlenecks in Superconducting Quantum Processors Dr_ Helena Vance, Dr_ Arthur Pendelton Department of Applied Quantum Physics, Cambridge Cryogenic Laboratory ABSTRACT: Superconducting quantum processors demand sub-20 millikelvin operational environments to maintain qubit coherence against themlal fluctuations. In this work, we analyze high-density coaxial microwave line ro uting through cryogenic themlal stages, identi$â€¢ing anomalous cross-coupling and passive attenuation limits for fault-tolerant architectures. 1. Introduction and Architectural Scaling The implementation of large-scale fault-tolerant quantum computers represents one of the most demanding engmeering challenges in contemporary physics. Superconducting circuits based on transmon qubits have achieved remarkable milestones, including quantum computational supremacy and error detection thresholds. However, scaling beyond several hundred physical qubits introduces a severe bottleneck: the interconnect problem. Each transmon requires dedicated coaxial microwave lines for control, flux bias tuning, and dispersive readout through coupled coplanar waveguide resonators. DIAGRAM: CRYOGENIC MICROWAiE ATTENUATION STAGES Room Temp Pulse Arbitrary Waveform Generator 4K Stage: High-Density Attenuator Block (-20dB) Still Stage Low-Noise Cryo-FiIter Cold Plate (IOOmK): Thermal Heat Sink Braid Mixing Chamber (15mÃ‘: Superconducting Transmon Processor Dispersive Readout Coplanar Resonator Line Figure I : Multi-stage cryogenic attenuation and micro wave interconnect ro uting inside the dilution refrigerator assembly Lab Report 2026 Submitted to Review 2. Cryogenic Thermal Load Constraints At millikelvin temperatures inside dilution refrigerators, available cooling power is drastically limited. At the 4 Kelvin plate, cooling power reaches roughly 1.5 Watts, but drops exponentially to less than 20 microwatts at the mixing chamber plate (15 mK). Every physical coaxial line conducts parasitic thermal energy and dissipates active microwave power. Thermal anchoring using bulk cryogenic attenuators is necessary, yet physical space and thermal budgets rapidly saturate as qubit counts Scale toward commercial utility. Page I",
+      "inference_ms": 301.3894,
+      "pipeline_ms": 461.28990000000005,
+      "cer": 0.3050761421319797,
+      "wer": 0.3483606557377049,
+      "accuracy_pct": 69.49238578680203,
+      "target_found": true
+    },
+    "scanned": {
+      "extracted": "PHYSICAL REVIEW APPLIED ADVANCED QU,.tTUM HL.RDWARE Cryogenic Microwave Routing and Scalability Bottlenecks in Superconducting Quantum Processors Dr. Helena Vance. Dr. Arthur Pendelton Department of Applied Quantum Physics, Cambridge Cryogenic Laboratory ABSTRAC T : Superconducting quantum processors demand sub-20 millikelvin operational environments to maintain qubit coherence agaiast thermal fluctuations In this work, we analyze high-density coaxial microwave line routing through ctyogenic thermal stages , identi$â€¢ing anomalous cross-coupling and passive attenuation limits for fiult-tolerant architectures. 1. Introduction and Architectural Scaling The implementation of large-scale fault-tolerant quantum computas represents one of the most demanding engineering Challenges in contemporary physics. Superconducting circuits based on transmon qubits have achieved remarkable milestones, including quantum computational supremacy and error detection thresholds. However , scaling beyond several hundred physical qubits introduces a severe bottleneckâ€¢ the interconnect problem. Each transmon requires dedtcated coaxial microwave lines for XY control, flux bias tuning. and dispersivz readout through coupled coplanar waveguide resonators. DIAGRAM: CRYOGENIC MICROWAVE ATTENUATION STAGES Room Temp (300Ã‘â€¢. Pulse Arbitraw Waveform Generator 4K Stage: High-Density A ttenuator Block (-20dB) Stage (0.8Ã‘: Low-Noise Crp-Fater cold Plate (IOOmK): Thermal Heat Sink Braid Miring Chamber (ISmÃ‘: Superconducting Transmon Processor Dispersive Readout Coplanar Resonator Line Figure I Multi-stage ctyogenic attenuation and microwave interconnect routing inside the dilution refrigerator assembly Lab Report Submitted to Contact: 2. Cryogenic Thermal Load Constraints At millikelvin temperatures inside dilution refrigerators, available cooling power is drastically limited. At the 4 Kelvin plate, cooling power reaches roughly 1 _ 5 Watts, but drops exponentially to less than 20 microwatts at the mixing Chamber plate (15 mK). Every physical coaxial line conducts parasitic thermal energy and dissipates active microwave power. Thermal anchoring using bulk cryogenic attenuators is necessary, yet physical Space and thermal budgets rapidly saturate as qubit counts Scale toward commercial utility. page",
+      "inference_ms": 377.0797,
+      "pipeline_ms": 614.2472,
+      "cer": 0.3182741116751269,
+      "wer": 0.42213114754098363,
+      "accuracy_pct": 68.1725888324873,
+      "target_found": true
+    },
+    "diagram_analysis": {
+      "total_diagram_texts": 6,
+      "digital_detected_count": 6,
+      "scanned_detected_count": 5,
+      "digital_diagram_acc_pct": 100.0,
+      "scanned_diagram_acc_pct": 83.3
+    }
+  }
+]

@@ -96,10 +96,11 @@ class LoTraMainWindow:
         self._build_hardware_footer()
 
         # Escuta contínua de callbacks entre threads
-        self.root.after(25, self.process_gui_callbacks)
+        self._after_id = self.root.after(25, self.process_gui_callbacks)
 
         # Protocolo de fechamento: minimiza para manter atalhos ativos
         self.root.protocol("WM_DELETE_WINDOW", self._on_close_requested)
+        self.root.bind("<Destroy>", self._on_root_destroyed, add="+")
 
     def _set_app_icon(self):
         """Define o ícone oficial da janela e da barra de tarefas."""
@@ -869,7 +870,27 @@ class LoTraMainWindow:
                 pass
         if hasattr(self, "root") and self.root:
             try:
-                self.root.after(25, self.process_gui_callbacks)
+                if self.root.winfo_exists():
+                    self._after_id = self.root.after(25, self.process_gui_callbacks)
+            except Exception:
+                pass
+
+    def _on_root_destroyed(self, event=None):
+        """Handler invocado quando o root Tkinter é destruído para limpar timers pendentes."""
+        if event is None or getattr(event, "widget", None) == getattr(self, "root", None):
+            if hasattr(self, "_after_id") and self._after_id:
+                try:
+                    self.root.after_cancel(self._after_id)
+                except Exception:
+                    pass
+                self._after_id = None
+
+    def destroy(self):
+        """Encerra a interface e cancela timers pendentes."""
+        self._on_root_destroyed()
+        if hasattr(self, "root") and self.root:
+            try:
+                self.root.destroy()
             except Exception:
                 pass
 

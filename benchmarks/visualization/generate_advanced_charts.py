@@ -54,8 +54,7 @@ def generate_ocr_spectrum_chart():
         ax.annotate(f'{int(h)}ms', xy=(r.get_x() + r.get_width()/2, h), xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=8, fontweight='bold')
 
     plt.tight_layout()
-    for save_dir in [OUTPUT_DIR, BASE_DIR]:
-        plt.savefig(os.path.join(save_dir, "ocr_spectrum_comparison.png"))
+    plt.savefig(os.path.join(OUTPUT_DIR, "ocr_spectrum_comparison.png"))
     plt.close()
     print("[OK] Gráfico ocr_spectrum_comparison.png gerado com sucesso!")
 
@@ -95,8 +94,7 @@ def generate_llm_spectrum_chart():
     ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left', frameon=True, facecolor='white', framealpha=0.9)
 
     plt.tight_layout()
-    for save_dir in [OUTPUT_DIR, BASE_DIR]:
-        plt.savefig(os.path.join(save_dir, "llm_translation_spectrum.png"))
+    plt.savefig(os.path.join(OUTPUT_DIR, "llm_translation_spectrum.png"))
     plt.close()
     print("[OK] Gráfico llm_translation_spectrum.png gerado com sucesso!")
 
@@ -137,8 +135,7 @@ def generate_hardware_stress_chart():
     ax2.grid(True, alpha=0.5)
 
     plt.tight_layout()
-    for save_dir in [OUTPUT_DIR, BASE_DIR]:
-        plt.savefig(os.path.join(save_dir, "hardware_stress_impact.png"))
+    plt.savefig(os.path.join(OUTPUT_DIR, "hardware_stress_impact.png"))
     plt.close()
     print("[OK] Gráfico hardware_stress_impact.png gerado com sucesso!")
 
@@ -172,8 +169,7 @@ def generate_complex_a4_layout_chart():
         ax.annotate(f'{h:.1f}%', xy=(r.get_x() + r.get_width()/2, h), xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=8.5, fontweight='bold')
 
     plt.tight_layout()
-    for save_dir in [OUTPUT_DIR, BASE_DIR]:
-        plt.savefig(os.path.join(save_dir, "complex_a4_layout_analysis.png"))
+    plt.savefig(os.path.join(OUTPUT_DIR, "complex_a4_layout_analysis.png"))
     plt.close()
     print("[OK] Gráfico complex_a4_layout_analysis.png gerado com sucesso!")
 

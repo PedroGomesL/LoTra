@@ -92,7 +92,18 @@ def run_win_ocr(image_path):
             "success": bool(stdout)
         }
 
+def ensure_test_images():
+    """Garante que as imagens de benchmark existam gerando-as sob demanda se necessário."""
+    needed_sample = os.path.join(IMAGES_DIR, "a4_complex_page_digital.png")
+    if not os.path.exists(IMAGES_DIR) or not os.path.exists(needed_sample):
+        print("[INFO] Gerando páginas de teste e página A4 para o benchmark de OCR...")
+        for script_name in ["generate_test_pages.py", "generate_complex_a4.py"]:
+            script_path = os.path.join(DATA_DIR, script_name)
+            if os.path.exists(script_path):
+                subprocess.run([sys.executable, script_path], check=True)
+
 def run_benchmark():
+    ensure_test_images()
     results = []
     
     # 1. Palavras e Expressões
