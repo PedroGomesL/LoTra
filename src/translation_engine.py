@@ -124,6 +124,13 @@ OFFLINE_TECHNICAL_GLOSSARY = {
 
     # Termos de Hardware, Física Quântica e Benchmarks
     "hello world": "olá mundo",
+    "hello": "olá",
+    "hi": "olá",
+    "world": "mundo",
+    "worlds": "mundos",
+    "warning": "aviso",
+    "warnings": "avisos",
+    "voltage": "voltagem",
     "quantum scalability": "escalabilidade quântica",
     "cryogenic attenuation stages": "estágios de atenuação criogênica",
     "superconducting transmon qubit": "qubit transmon supercondutor",
@@ -648,8 +655,14 @@ class OfflineContextTranslator:
 
                     working_line = pattern.sub(_ph_sub, working_line)
 
-                # B. Tokeniza a linha preservando pontuações, hífens e apóstrofos
-                tokens = re.findall(r'(__LOTRA_PH_\d+__|[a-zA-ZÀ-ÿ0-9\'-]+|[^\s\w])', working_line)
+                # B. Tokeniza a linha preservando emojis compostos (com ZWJ e seletores), pontuações, hífens e apóstrofos
+                tokens = re.findall(
+                    r'(__LOTRA_PH_\d+__|'
+                    r'[\U00010000-\U0010ffff\u2600-\u27bf\u2300-\u23ff](?:[\ufe0e\ufe0f]|\u200d[\U00010000-\U0010ffff\u2600-\u27bf\u2300-\u23ff]|[\U0001f3fb-\U0001f3ff])*|'
+                    r'[a-zA-ZÀ-ÿ0-9\'-]+|'
+                    r'[^\s\w])',
+                    working_line
+                )
                 translated_tokens = []
 
                 for tok in tokens:

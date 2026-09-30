@@ -59,7 +59,14 @@ class LoTraApp:
 
     def get_tk_root(self):
         """Retorna uma raiz única e centralizada do Tkinter para todo o aplicativo."""
-        if self._tk_root is None:
+        root_alive = False
+        if self._tk_root is not None:
+            try:
+                root_alive = bool(self._tk_root.winfo_exists())
+            except Exception:
+                root_alive = False
+
+        if not root_alive:
             import tkinter as tk
             self._tk_root = tk.Tk()
             self._tk_root.withdraw()
@@ -186,7 +193,16 @@ class LoTraApp:
                     "trans_id": curr_id
                 })
 
-            res = self.translate_text(clean_text, doc_hash="quick_translate", stream_callback=stream_cb)
+            try:
+                res = self.translate_text(clean_text, doc_hash="quick_translate", stream_callback=stream_cb)
+            except Exception as e:
+                res = {
+                    "source_text": clean_text,
+                    "translated_text": f"Aviso de Tradução: Falha temporária no motor ({e}).",
+                    "latency_ms": 0.0,
+                    "engine_used": "Fallback"
+                }
+
             if curr_id != self._active_translation_id:
                 return
 
@@ -199,7 +215,16 @@ class LoTraApp:
                 self.hud.update_stream(delta, full_so_far)
                 self.hud.pump_events()
 
-            res = self.translate_text(clean_text, doc_hash="quick_translate", stream_callback=stream_cb)
+            try:
+                res = self.translate_text(clean_text, doc_hash="quick_translate", stream_callback=stream_cb)
+            except Exception as e:
+                res = {
+                    "source_text": clean_text,
+                    "translated_text": f"Aviso de Tradução: Falha temporária no motor ({e}).",
+                    "latency_ms": 0.0,
+                    "engine_used": "Fallback"
+                }
+
             self.hud.finish_stream(
                 final_text=res["translated_text"],
                 latency_ms=res.get("latency_ms", 0.0),
@@ -270,19 +295,31 @@ class LoTraApp:
             threading.Thread(target=self._ocr_worker_task, daemon=True, name="LoTra_OCR_Worker").start()
 
     def _handle_native_snip(self):
-        """Inicia o NativeScreenSnipper na thread de UI."""
+        """Inicia o NativeScreenSnipper na thread de UI com trans_id thread-safe."""
+        with self._lock:
+            self._active_translation_id += 1
+            curr_id = self._active_translation_id
+
         def on_snip(img, pos):
             def ocr_task():
-                ocr_res = self.ocr_engine.recognize_pil_image(img)
-                if not ocr_res.get("success") or not ocr_res.get("text"):
-                    self._display_hud_notice("Nenhum texto legível detectado na captura de tela.")
-                    return
-                clean_text = normalize_text_spacing(ocr_res["text"])
-                trans_res = self.translate_text(clean_text)
-                trans_res["engine_used"] = f"Native Snipper + WinRT OCR ({ocr_res.get('inference_ms', 0):.0f}ms) + {trans_res['engine_used']}"
-                trans_res["cursor_pos"] = pos
-                self._ui_queue.put(trans_res)
-            threading.Thread(target=ocr_task, daemon=True, name="LoTra_OCR_Worker").start()
+                try:
+                    ocr_res = self.ocr_engine.recognize_pil_image(img)
+                    if not ocr_res.get("success") or not ocr_res.get("text"):
+                        self._display_hud_notice("Nenhum texto legível detectado na captura de tela.")
+                        return
+                    clean_text = normalize_text_spacing(ocr_res["text"])
+                    if not clean_text:
+                        self._display_hud_notice("Nenhum texto legível detectado na captura de tela.")
+                        return
+                    trans_res = self.translate_text(clean_text)
+                    trans_res["engine_used"] = f"Native Snipper + WinRT OCR ({ocr_res.get('inference_ms', 0):.0f}ms) + {trans_res['engine_used']}"
+                    trans_res["cursor_pos"] = pos
+                    trans_res["trans_id"] = curr_id
+                    if curr_id == self._active_translation_id:
+                        self._ui_queue.put(trans_res)
+                except Exception as e:
+                    self._display_hud_notice(f"Erro no processamento OCR: {e}")
+            threading.Thread(target=ocr_task, daemon=True, name=f"LoTra_OCR_Worker_{curr_id}").start()
 
         self.screen_snipper.start_snip(
             on_snip=on_snip,
@@ -338,17 +375,27 @@ class LoTraApp:
             return
 
         # 4. Executa OCR local nativo com buffers efêmeros
-        ocr_res = self.ocr_engine.recognize_pil_image(grabbed_img)
-        if not ocr_res.get("success") or not ocr_res.get("text"):
-            print("[LoTra OCR Snip] Nenhum texto legível encontrado pelo OCR.")
-            return
+        try:
+            ocr_res = self.ocr_engine.recognize_pil_image(grabbed_img)
+            if not ocr_res.get("success") or not ocr_res.get("text"):
+                print("[LoTra OCR Snip] Nenhum texto legível encontrado pelo OCR.")
+                return
 
-        # 5. Normaliza quebras de linha e traduz localmente
-        clean_text = normalize_text_spacing(ocr_res["text"])
-        trans_res = self.translate_text(clean_text)
-        trans_res["engine_used"] = f"WinRT OCR ({ocr_res.get('inference_ms', 0):.0f}ms) + {trans_res['engine_used']}"
+            # 5. Normaliza quebras de linha e traduz localmente
+            clean_text = normalize_text_spacing(ocr_res["text"])
+            if not clean_text:
+                return
 
-        self._ui_queue.put(trans_res)
+            with self._lock:
+                self._active_translation_id += 1
+                curr_id = self._active_translation_id
+
+            trans_res = self.translate_text(clean_text)
+            trans_res["engine_used"] = f"WinRT OCR ({ocr_res.get('inference_ms', 0):.0f}ms) + {trans_res['engine_used']}"
+            trans_res["trans_id"] = curr_id
+            self._ui_queue.put(trans_res)
+        except Exception as e:
+            print(f"[LoTra OCR Snip Error] {e}")
 
     def stop_hud_service(self):
         """Para o daemon HUD cooperativamente e executa checkpoint de encerramento limpo do banco."""

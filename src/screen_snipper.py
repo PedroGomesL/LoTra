@@ -178,7 +178,15 @@ class NativeScreenSnipper:
         bbox = (x1, y1, x2, y2)
         img = self.grab_bbox(bbox)
         if img and self._on_snip_callback:
-            self._on_snip_callback(img, (x1, y1))
+            try:
+                self._on_snip_callback(img, (x1, y1))
+            except Exception as e:
+                print(f"[LoTra ScreenSnipper Error] Exception in on_snip_callback: {e}")
+        elif not img and self._on_cancel_callback:
+            try:
+                self._on_cancel_callback()
+            except Exception:
+                pass
 
     @staticmethod
     def grab_bbox(bbox: Tuple[int, int, int, int]) -> Optional[Image.Image]:

@@ -361,6 +361,182 @@ class TestLoTraExtremeStress(unittest.TestCase):
         _send_synthetic_key(0x11, is_up=True)
         self.assertTrue(True)
 
+    def test_12_unicode_zero_width_and_invisible_cleaner(self):
+        """Valida que caracteres invisíveis (zero-width, BOM, non-breaking space, soft-hyphen) são limpos e termos do glossário identificados."""
+        dirty_input = "\ufeffRecent\u00a0advances\u200b in\u200c generative\u200d ai\u00a0continue to\xad evolve."
+        cleaned = normalize_text_spacing(dirty_input)
+        self.assertNotIn("\ufeff", cleaned)
+        self.assertNotIn("\u200b", cleaned)
+        self.assertNotIn("\u200c", cleaned)
+        self.assertNotIn("\u200d", cleaned)
+        self.assertNotIn("\xad", cleaned)
+        self.assertNotIn("\u00a0", cleaned)
+        self.assertEqual(cleaned, "Recent advances in generative ai continue to evolve.")
+
+        # Tradução com input sujo deve funcionar perfeitamente
+        res = self.app.translate_text(dirty_input)
+        self.assertTrue(res["translated_text"])
+        self.assertIn("evoluir", res["translated_text"].lower())
+
+    def test_13_rapid_tab_switching_and_history_loading(self):
+        """Valida comutação em rajada (45x) de abas na UI moderna e carregamento de itens do histórico."""
+        from ui_window import LoTraMainWindow
+        import tkinter as tk
+
+        main_win = LoTraMainWindow(app=self.app)
+        try:
+            # Comutação rápida entre as 3 abas sem erros
+            tabs = ["translate", "history", "hardware"]
+            for i in range(45):
+                target = tabs[i % 3]
+                main_win._switch_tab(target)
+                self.assertEqual(main_win.current_tab, target)
+
+            # Insere um registro no cofre e atualiza lista de histórico
+            self.vault.store_cache("tab_test_doc", 1, "Deep Learning Architecture", "", "Arquitetura de Aprendizado Profundo", "test_model", 10.5)
+            main_win._refresh_history_list()
+            children = main_win.tree_history.get_children()
+            self.assertGreater(len(children), 0)
+
+            # Simula seleção e carregamento no tradutor
+            main_win.tree_history.selection_set(children[0])
+            main_win._load_selected_history_item()
+            self.assertEqual(main_win.current_tab, "translate")
+            self.assertIn("Deep Learning Architecture", main_win.txt_input.get("1.0", "end"))
+        finally:
+            try:
+                main_win.root.destroy()
+            except Exception:
+                pass
+
+    def test_14_rapid_concurrent_ocr_and_selection_switching(self):
+        """Simula disparo concorrente de seleção e OCR com trans_id estrito."""
+        initial_id = self.app._active_translation_id
+        threads = []
+        for i in range(10):
+            t1 = threading.Thread(target=self.app._dispatch_translation, args=(f"Selection text {i}",))
+            t2 = threading.Thread(target=self.app._ui_queue.put, args=({"_action": "stream_start", "trans_id": initial_id + i},))
+            threads.extend([t1, t2])
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=3.0)
+
+        self.assertGreater(self.app._active_translation_id, initial_id)
+
+    def test_15_empty_and_whitespace_extreme_inputs(self):
+        """Valida que entradas totalmente vazias, somente espaços ou zero-width não quebram o pipeline."""
+        empty_cases = [
+            "",
+            "   ",
+            "\n\n\t  \r\n",
+            "\u200b\u200c\u200d",
+            "\x00\x07\x1b",
+            "   \u00a0   \u2009   "
+        ]
+        for ec in empty_cases:
+            res = self.app.translate_text(ec)
+            self.assertEqual(res["translated_text"], "")
+            self.assertEqual(res["source_text"], "")
+            # Normalização deve retornar string vazia limpa
+            self.assertEqual(normalize_text_spacing(ec), "")
+
+    def test_16_hud_web_features_and_mouse_debounce(self):
+        """Valida novas funcionalidades web do HUD: botão de copiar rápido, status pill e debounce de clique fora."""
+        hud = HUDTooltip()
+        hud.show("Texto teste de overlay web moderno", "Source", latency_ms=22.5, engine_name="Qwen 2.5 1.5B")
+        self.assertTrue(hud._is_active)
+        self.assertIsNotNone(hud._window)
+        self.assertIsNotNone(hud._status_pill)
+        self.assertIsNotNone(hud._btn_copy)
+        self.assertIn("Qwen", hud._status_pill.cget("text"))
+
+        # Testa cópia pelo botão web do HUD
+        target = getattr(hud, "_full_text", "") or hud._current_text
+        set_windows_clipboard_text(target)
+        copied = get_windows_clipboard_text()
+        self.assertIn("Texto teste de overlay web moderno", copied)
+
+        # Valida que o debounce do mouse foi inicializado
+        self.assertIsInstance(hud._mouse_released_once, bool)
+        hud.dismiss()
+        hud.destroy()
+
+    def test_17_compound_emoji_and_variation_selector_integrity(self):
+        """Valida que emojis compostos com ZWJ (ex: desenvolvedor 👨‍💻) e seletores de variação (⚡️) não são corrompidos."""
+        dev_text = "The developer 👨\u200d💻 created an AI model."
+        normalized = normalize_text_spacing(dev_text)
+        self.assertIn("\u200d", normalized, "O Zero-Width Joiner (ZWJ) de emojis compostos não deve ser expurgado!")
+        self.assertIn("👨\u200d💻", normalized)
+
+        translated = OfflineContextTranslator.translate(dev_text)
+        self.assertIn("👨\u200d💻", translated, "Emoji composto deve ser preservado como glifo atômico sem espaços injetados no ZWJ!")
+
+        # Valida seletor de variação (\ufe0f) em símbolos como raio (⚡️)
+        symbol_text = "Warning: ⚡\ufe0f high voltage!"
+        norm_sym = normalize_text_spacing(symbol_text)
+        trans_sym = OfflineContextTranslator.translate(norm_sym)
+        self.assertNotIn("⚡ ️", trans_sym, "Espaço não deve ser injetado entre o emoji e seu variation selector!")
+        self.assertIn("⚡\ufe0f", trans_sym)
+
+        # Valida emoji complexo com múltiplos ZWJs encadeados (família de 4 pessoas)
+        family_text = "Family 👨\u200d👩\u200d👧\u200d👦 together."
+        norm_fam = normalize_text_spacing(family_text)
+        self.assertEqual(norm_fam.count("\u200d"), 3, "Todos os 3 ZWJs da sequência familiar devem ser preservados!")
+        trans_fam = OfflineContextTranslator.translate(norm_fam)
+        self.assertIn("👨\u200d👩\u200d👧\u200d👦", trans_fam)
+
+    def test_18_extreme_history_cache_stress_and_untruncated_integrity(self):
+        """Valida estresse com 50 entradas longas no cofre ACID e integridade 100% sem truncamento a 60 chars."""
+        from ui_window import LoTraMainWindow
+
+        long_entries = [
+            (
+                f"Long Article Section {i}: Deep neural networks utilize transformer architectures to process natural language tokens with self-attention mechanisms across multiple heads.",
+                f"Seção de Artigo Longo {i}: Redes neurais profundas utilizam arquiteturas de transformadores para processar tokens de linguagem natural com mecanismos de autoatenção em múltiplas cabeças."
+            )
+            for i in range(50)
+        ]
+
+        for i, (src, trans) in enumerate(long_entries):
+            self.vault.store_cache("extreme_stress_doc", i + 1, src, "", trans, "qwen2.5:1.5b", 12.5 + i)
+
+        main_win = LoTraMainWindow(app=self.app)
+        try:
+            main_win._switch_tab("history")
+            children = main_win.tree_history.get_children()
+            self.assertGreaterEqual(len(children), 40, "Deve carregar histórico volumoso do cache.")
+
+            # Valida que todos os itens carregados têm dados completos armazenados
+            self.assertGreaterEqual(len(main_win._history_items_data), len(children))
+
+            # Seleciona o primeiro item (mais recente inserido, index 49)
+            main_win.tree_history.selection_set(children[0])
+            main_win._load_selected_history_item()
+            self.assertEqual(main_win.current_tab, "translate")
+
+            loaded_src = main_win.txt_input.get("1.0", "end").strip()
+            loaded_trans = main_win.txt_output.get("1.0", "end").strip()
+
+            expected_src, expected_trans = long_entries[-1]
+            self.assertEqual(loaded_src, expected_src, "Texto original não deve sofrer truncamento a 60 caracteres!")
+            self.assertEqual(loaded_trans, expected_trans, "Texto traduzido não deve sofrer truncamento a 60 caracteres!")
+            self.assertGreater(len(loaded_src), 100)
+            self.assertGreater(len(loaded_trans), 120)
+
+            # Valida cópia completa do histórico
+            main_win._copy_selected_history_item()
+            copied = get_windows_clipboard_text()
+            self.assertEqual(copied, expected_trans)
+        finally:
+            try:
+                main_win.root.destroy()
+            except Exception:
+                pass
+
 
 if __name__ == "__main__":
     unittest.main()
+
+

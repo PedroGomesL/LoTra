@@ -16,6 +16,7 @@ import os
 import sys
 import time
 import unittest
+import tkinter as tk
 from pathlib import Path
 from PIL import Image
 
@@ -28,7 +29,7 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 from platform_core import SingleInstanceGuard, get_app_data_dir
-from hud_tooltip import normalize_text_spacing, HUDTooltip
+from hud_tooltip import normalize_text_spacing, HUDTooltip, get_windows_clipboard_text, set_windows_clipboard_text
 from translation_engine import OfflineContextTranslator, TranslationPipeline
 from document_context_vault import DocumentContextVault
 from resource_utils import get_resource_path
@@ -244,6 +245,226 @@ class TestLoTraBugsAndUI(unittest.TestCase):
         res = self.pipeline.translate_text("hello world", stream_callback=stream_recorder)
         self.assertTrue(len(received_tokens) > 0, "O callback de streaming deve receber o texto traduzido.")
         self.assertEqual(res["translated_text"].lower().strip("!."), "olá mundo")
+
+    def test_modern_web_ui_dashboard_features(self):
+        """Valida novos componentes de UI moderna web: tabs segmentadas, chips de amostra, contador de chars e cópia."""
+        class MockApp:
+            def __init__(self):
+                self._ui_queue = None
+                self._is_serving = True
+            def profile_hardware(self):
+                return {
+                    "cpu_cores": 8,
+                    "avail_ram_gb": 12.0,
+                    "total_ram_gb": 16.0,
+                    "gpu_name": "Radeon Graphics",
+                    "gpu_backend": "DirectML",
+                    "recommended_tier": "small",
+                    "recommended_model": "qwen2.5:1.5b"
+                }
+            def translate_text(self, txt, **kwargs):
+                return {
+                    "source_text": txt,
+                    "translated_text": f"Traduzido: {txt}",
+                    "latency_ms": 12.0,
+                    "engine_used": "LoTra Web Engine"
+                }
+            def run_self_test(self):
+                return {"all_passed": True, "subsystems": {}}
+            def stop_hud_service(self):
+                pass
+
+        mock_app = MockApp()
+        win = LoTraMainWindow(app=mock_app)
+        try:
+            # 1. Comutação de abas
+            self.assertEqual(win.current_tab, "translate")
+            win._switch_tab("history")
+            self.assertEqual(win.current_tab, "history")
+            win._switch_tab("hardware")
+            self.assertEqual(win.current_tab, "hardware")
+            win._switch_tab("translate")
+            self.assertEqual(win.current_tab, "translate")
+
+            # 2. Contador de caracteres e palavras
+            win._set_input_text("Hello brave new world")
+            self.assertIn("21 caracteres", win.lbl_char_count.cget("text"))
+            self.assertIn("4 palavras", win.lbl_char_count.cget("text"))
+
+            # 3. Teste de tradução e cópia
+            win._do_manual_translate()
+            self.assertIn("Traduzido: Hello brave new world", win.txt_output.get("1.0", "end"))
+            win._copy_output_to_clipboard()
+            self.assertEqual(win.btn_copy.cget("text").strip(), "✓ Copiado!")
+
+            # 4. Execução de self-test pela UI
+            win._run_gui_self_test()
+            self.assertIn("100%", win.lbl_selftest_res.cget("text"))
+        finally:
+            win.root.destroy()
+
+    def test_placeholder_lifecycle_and_character_counts(self):
+        """Valida ciclo de vida do placeholder: foco, perda de foco, limpeza e contagem de caracteres."""
+        class MockApp:
+            def __init__(self):
+                self._ui_queue = None
+                self._is_serving = True
+            def profile_hardware(self):
+                return {"cpu_cores": 4, "avail_ram_gb": 8.0, "total_ram_gb": 16.0, "gpu_name": "Mock", "gpu_backend": "CPU"}
+            def translate_text(self, txt, **kwargs):
+                return {"source_text": txt, "translated_text": f"OK: {txt}", "latency_ms": 5.0, "engine_used": "Mock"}
+            def run_self_test(self):
+                return {"all_passed": True, "subsystems": {}}
+            def stop_hud_service(self):
+                pass
+
+        win = LoTraMainWindow(app=MockApp())
+        try:
+            # 1. Limpa campos: placeholder deve estar presente e contador deve mostrar 0
+            win._clear_fields()
+            self.assertEqual(win.txt_input.get("1.0", "end").strip(), win._placeholder_text)
+            self.assertEqual(win.txt_input.cget("fg"), win.c_text_placeholder)
+            self.assertIn("0 caracteres", win.lbl_char_count.cget("text"))
+            self.assertIn("0 palavras", win.lbl_char_count.cget("text"))
+
+            # 2. Focus In deve limpar o placeholder se presente
+            win._on_input_focus_in()
+            self.assertEqual(win.txt_input.get("1.0", "end").strip(), "")
+            self.assertEqual(win.txt_input.cget("fg"), win.c_text)
+
+            # 3. Focus Out sem texto digitado deve restaurar o placeholder
+            win._on_input_focus_out()
+            self.assertEqual(win.txt_input.get("1.0", "end").strip(), win._placeholder_text)
+            self.assertEqual(win.txt_input.cget("fg"), win.c_text_placeholder)
+            self.assertIn("0 caracteres", win.lbl_char_count.cget("text"))
+
+            # 4. Digitação de texto real atualiza contador
+            win._on_input_focus_in()
+            win.txt_input.insert("1.0", "Artificial Intelligence and Machine Learning")
+            win._on_input_changed()
+            self.assertEqual(win.txt_input.cget("fg"), win.c_text)
+            self.assertIn("44 caracteres", win.lbl_char_count.cget("text"))
+            self.assertIn("5 palavras", win.lbl_char_count.cget("text"))
+
+            # 5. Focus Out com texto real mantém o texto e o contador
+            win._on_input_focus_out()
+            self.assertEqual(win.txt_input.get("1.0", "end").strip(), "Artificial Intelligence and Machine Learning")
+            self.assertIn("44 caracteres", win.lbl_char_count.cget("text"))
+        finally:
+            win.root.destroy()
+
+    def test_untruncated_history_retrieval_and_double_click(self):
+        """Valida que textos longos no histórico (> 60 chars) não são truncados ao carregar no tradutor ou copiar."""
+        import tempfile
+        from document_context_vault import DocumentContextVault
+
+        temp_db = tempfile.mktemp(suffix=".db")
+        vault = DocumentContextVault(db_path=temp_db, enable_privacy=False)
+
+        long_src = "Superconducting quantum circuits require cryogenic attenuation stages to suppress thermal photons and crosstalk between readout lines."
+        long_trans = "Circuitos quânticos supercondutores requerem estágios de atenuação criogênica para suprimir fótons térmicos e diafonia entre linhas de leitura."
+        self.assertGreater(len(long_src), 100)
+        self.assertGreater(len(long_trans), 120)
+
+        vault.store_cache("test_doc", 1, long_src, "", long_trans, "test_model", 8.5)
+
+        class MockAppWithVault:
+            def __init__(self):
+                self._ui_queue = None
+                self._is_serving = True
+                self.vault = vault
+            def profile_hardware(self):
+                return {"cpu_cores": 8, "avail_ram_gb": 16.0, "total_ram_gb": 32.0, "gpu_name": "DirectML", "gpu_backend": "DirectML"}
+            def translate_text(self, txt, **kwargs):
+                return {"source_text": txt, "translated_text": f"Trad: {txt}", "latency_ms": 10.0, "engine_used": "Test"}
+            def run_self_test(self):
+                return {"all_passed": True, "subsystems": {}}
+            def stop_hud_service(self):
+                pass
+
+        win = LoTraMainWindow(app=MockAppWithVault())
+        try:
+            win._switch_tab("history")
+            children = win.tree_history.get_children()
+            self.assertEqual(len(children), 1)
+            item_id = children[0]
+
+            # Valida carregamento no tradutor com texto 100% completo (sem truncamento a 60 chars)
+            win.tree_history.selection_set(item_id)
+            win._load_selected_history_item()
+            self.assertEqual(win.current_tab, "translate")
+            loaded_input = win.txt_input.get("1.0", "end").strip()
+            loaded_output = win.txt_output.get("1.0", "end").strip()
+
+            self.assertEqual(loaded_input, long_src)
+            self.assertEqual(loaded_output, long_trans)
+
+            # Valida cópia para o clipboard com texto completo
+            win._copy_selected_history_item()
+            copied = get_windows_clipboard_text()
+            self.assertEqual(copied, long_trans)
+        finally:
+            win.root.destroy()
+            vault.shutdown()
+            try:
+                import os
+                os.remove(temp_db)
+            except Exception:
+                pass
+
+    def test_non_blocking_async_translate_and_selftest(self):
+        """Valida que _do_manual_translate e _run_gui_self_test com async_mode=True executam em background sem travar UI."""
+        class MockAppAsync:
+            def __init__(self):
+                self._ui_queue = None
+                self._is_serving = True
+            def profile_hardware(self):
+                return {"cpu_cores": 8, "avail_ram_gb": 16.0, "total_ram_gb": 32.0, "gpu_name": "GPU", "gpu_backend": "DirectML"}
+            def translate_text(self, txt, stream_callback=None, **kwargs):
+                time.sleep(0.08)
+                if stream_callback:
+                    stream_callback("Trad", "Trad")
+                    stream_callback("uzido!", "Traduzido!")
+                return {"source_text": txt, "translated_text": f"Async: {txt}", "latency_ms": 80.0, "engine_used": "MockAsync"}
+            def run_self_test(self):
+                time.sleep(0.08)
+                return {"all_passed": True, "subsystems": {"test": {"status": "PASS"}}}
+            def stop_hud_service(self):
+                pass
+
+        win = LoTraMainWindow(app=MockAppAsync())
+        try:
+            # 1. Tradução assíncrona não trava UI
+            win._set_input_text("Testing async execution")
+            win._do_manual_translate(async_mode=True)
+            self.assertTrue(win._is_translating)
+            self.assertEqual(win.btn_translate.cget("state"), tk.DISABLED)
+
+            # Processa eventos e aguarda conclusão da thread de background
+            deadline = time.perf_counter() + 3.0
+            while win._is_translating and time.perf_counter() < deadline:
+                win.root.update()
+                time.sleep(0.02)
+
+            self.assertFalse(win._is_translating)
+            self.assertEqual(win.btn_translate.cget("state"), tk.NORMAL)
+            self.assertIn("Async: Testing async execution", win.txt_output.get("1.0", "end"))
+
+            # 2. Self-test assíncrono não trava UI
+            win._run_gui_self_test(async_mode=True)
+            self.assertTrue(win._is_running_selftest)
+            self.assertEqual(win.btn_run_selftest.cget("state"), tk.DISABLED)
+
+            deadline = time.perf_counter() + 3.0
+            while win._is_running_selftest and time.perf_counter() < deadline:
+                win.root.update()
+                time.sleep(0.02)
+
+            self.assertFalse(win._is_running_selftest)
+            self.assertEqual(win.btn_run_selftest.cget("state"), tk.NORMAL)
+            self.assertIn("100%", win.lbl_selftest_res.cget("text"))
+        finally:
+            win.root.destroy()
 
 def run_tests():
     suite = unittest.TestLoader().loadTestsFromTestCase(TestLoTraBugsAndUI)

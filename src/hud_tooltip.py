@@ -463,6 +463,22 @@ def normalize_text_spacing(text: str) -> str:
     except Exception:
         pass
     t = re.sub(r'[\x01-\x08\x0b\x0c\x0e-\x1f\x7f\ufffd]', '', t)
+
+    # Normaliza espaços especiais, caracteres invisíveis e zero-width (Web / PDF / OCR)
+    t = t.replace("\u00a0", " ").replace("\u202f", " ").replace("\u2009", " ").replace("\xad", "")
+    # Preserva ZWJ (\u200d) quando faz parte de sequências compostas de emojis (incluindo cadeias com múltiplos ZWJs)
+    emoji_zwj_pat = re.compile(
+        r'([\U00010000-\U0010ffff\u2600-\u27bf\u2300-\u23ff](?:[\ufe0e\ufe0f]|[\U0001f3fb-\U0001f3ff])*)\u200d'
+        r'([\U00010000-\U0010ffff\u2600-\u27bf\u2300-\u23ff])'
+    )
+    while True:
+        new_t = emoji_zwj_pat.sub(r'\1__LOTRA_EMOJI_ZWJ__\2', t)
+        if new_t == t:
+            break
+        t = new_t
+    t = re.sub(r'[\u200b-\u200d\ufeff]', '', t)
+    t = t.replace('__LOTRA_EMOJI_ZWJ__', '\u200d')
+
     t = t.replace("\r\n", "\n").replace("\r", "\n").strip()
     if not t:
         return ""
@@ -768,6 +784,78 @@ class HUDTooltip:
         self._dpi_scale = max(1.0, dpi / 96.0)
         self._font_size = max(9, int(round(11 * self._dpi_scale)))
 
+        # Header bar estilizada com badges tipo web card
+        self._header_frame = tk.Frame(self._main_frame, bg=bg_dark)
+        self._header_frame.pack(fill=tk.X, pady=(0, 6))
+
+        # Brand badge pill
+        self._brand_pill = tk.Label(
+            self._header_frame,
+            text=" LoTra HUD ",
+            font=("Arial", max(7, int(8 * self._dpi_scale)), "bold"),
+            bg="#0f5c6e",
+            fg="#ffffff",
+            padx=5,
+            pady=1
+        )
+        self._brand_pill.pack(side=tk.LEFT)
+
+        # Status dot e indicador de motor
+        self._status_pill = tk.Label(
+            self._header_frame,
+            text=" ● Traduzindo... ",
+            font=("Arial", max(7, int(8 * self._dpi_scale))),
+            bg="#133842",
+            fg="#f59e0b",
+            padx=5,
+            pady=1
+        )
+        self._status_pill.pack(side=tk.LEFT, padx=(6, 0))
+
+        # Botão Fechar [Esc]
+        self._btn_close = tk.Label(
+            self._header_frame,
+            text=" ✕ Esc ",
+            font=("Arial", max(7, int(8 * self._dpi_scale))),
+            bg="#18343b",
+            fg="#9fb8bd",
+            cursor="hand2",
+            padx=5,
+            pady=1
+        )
+        self._btn_close.pack(side=tk.RIGHT)
+
+        # Botão Copiar rápido
+        self._btn_copy = tk.Label(
+            self._header_frame,
+            text=" 📋 Copiar ",
+            font=("Arial", max(7, int(8 * self._dpi_scale)), "bold"),
+            bg="#174e5c",
+            fg="#d8eff5",
+            cursor="hand2",
+            padx=6,
+            pady=1
+        )
+        self._btn_copy.pack(side=tk.RIGHT, padx=(0, 6))
+
+        def on_copy_action(event=None):
+            target_copy = getattr(self, "_full_text", "") or self._current_text
+            if target_copy and target_copy != "...":
+                set_windows_clipboard_text(target_copy)
+                try:
+                    if hasattr(self, "_btn_copy") and self._btn_copy:
+                        self._btn_copy.config(text=" ✓ Copiado! ", bg="#1b8a5a", fg="#ffffff")
+                    if hasattr(self, "_footer_lbl") and self._footer_lbl:
+                        self._footer_lbl.config(text="✓ Copiado para o clipboard!", fg="#4ade80")
+                    if self._window:
+                        self._window.after(650, self.dismiss)
+                except Exception:
+                    self.dismiss()
+
+        self._btn_copy.bind("<Button-1>", on_copy_action)
+        self._btn_close.bind("<Button-1>", lambda e: self.dismiss())
+
+        # Rótulo de texto primário (mantém Times New Roman e contrato da suíte)
         self._trans_label = tk.Label(
             self._main_frame,
             text=self._current_text,
@@ -781,20 +869,43 @@ class HUDTooltip:
         )
         self._trans_label.pack(anchor="w")
 
-        def on_click(event):
+        # Footer sutil com dica de atalhos e feedback
+        self._footer_frame = tk.Frame(self._main_frame, bg=bg_dark)
+        self._footer_frame.pack(fill=tk.X, pady=(6, 0))
+
+        self._footer_lbl = tk.Label(
+            self._footer_frame,
+            text="Clique no card ou no botão para copiar  •  Pressione Esc para fechar",
+            font=("Arial", max(7, int(7.5 * self._dpi_scale))),
+            fg="#5c8089",
+            bg=bg_dark
+        )
+        self._footer_lbl.pack(anchor="w")
+
+        def on_card_click(event):
             target_copy = getattr(self, "_full_text", "") or self._current_text
             if target_copy and target_copy != "...":
                 set_windows_clipboard_text(target_copy)
             self.dismiss()
 
-        window.bind("<Button-1>", on_click)
-        self._main_frame.bind("<Button-1>", on_click)
-        self._trans_label.bind("<Button-1>", on_click)
+        window.bind("<Button-1>", on_card_click)
+        self._main_frame.bind("<Button-1>", on_card_click)
+        self._trans_label.bind("<Button-1>", on_card_click)
+        self._footer_frame.bind("<Button-1>", on_card_click)
+        self._footer_lbl.bind("<Button-1>", on_card_click)
         window.bind("<Escape>", lambda e: self.dismiss())
 
         self._update_geometry(self._current_text)
 
+        # Rastreia se o botão do mouse já estava pressionado para evitar fechamento acidental ao soltar
+        self._mouse_released_once = False
         if sys.platform == "win32":
+            try:
+                user32 = ctypes.windll.user32
+                lbutton_down = bool(user32.GetAsyncKeyState(0x01) & 0x8000)
+                self._mouse_released_once = not lbutton_down
+            except Exception:
+                self._mouse_released_once = True
             self._outside_poll_job = window.after(180, self._check_click_outside)
 
     def update_stream(self, token_chunk: str, full_text_so_far: str):
@@ -822,18 +933,35 @@ class HUDTooltip:
             clean_text = self._current_text
 
         self._current_text = clean_text
+        self._full_text = clean_text
         self._update_geometry(clean_text)
+
+        # Atualiza badge de status para verde quando concluído
+        if hasattr(self, "_status_pill") and self._status_pill:
+            try:
+                eng = engine_name if engine_name else "Pronto"
+                if len(eng) > 24:
+                    eng = eng[:22] + ".."
+                lat_str = f"({latency_ms:.0f}ms)" if latency_ms > 0 else ""
+                self._status_pill.config(text=f" ● {eng} {lat_str}".strip() + " ", fg="#4ade80", bg="#133842")
+            except Exception:
+                pass
 
         def on_click(event):
             target_copy = getattr(self, "_full_text", "") or clean_text
-            set_windows_clipboard_text(target_copy)
+            if target_copy and target_copy != "...":
+                set_windows_clipboard_text(target_copy)
             self.dismiss()
 
-        self._window.bind("<Button-1>", on_click)
-        if self._main_frame:
-            self._main_frame.bind("<Button-1>", on_click)
-        if self._trans_label:
-            self._trans_label.bind("<Button-1>", on_click)
+        for w in [self._window, self._main_frame, self._trans_label,
+                  getattr(self, "_header_frame", None), getattr(self, "_brand_pill", None),
+                  getattr(self, "_status_pill", None), getattr(self, "_footer_frame", None),
+                  getattr(self, "_footer_lbl", None)]:
+            if w:
+                try:
+                    w.bind("<Button-1>", on_click)
+                except Exception:
+                    pass
 
     def show(self, 
              translated_text: str, 
@@ -862,6 +990,13 @@ class HUDTooltip:
 
             if esc_down:
                 self.dismiss()
+                return
+
+            if not getattr(self, "_mouse_released_once", True):
+                if not lbutton_down and not rbutton_down:
+                    self._mouse_released_once = True
+                if self._is_active and self._window:
+                    self._outside_poll_job = self._window.after(40, self._check_click_outside)
                 return
 
             if lbutton_down or rbutton_down:
