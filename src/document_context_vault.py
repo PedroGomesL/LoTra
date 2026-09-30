@@ -667,8 +667,6 @@ class DocumentContextVault:
                 LIMIT 1
             """, (doc_hash, current_page, current_page)).fetchone()
             
-            sec_title = sec["section_title"] if sec else "Texto Principal"
-            
             matched_terms = {}
             lower_text = selected_text.lower()
             for k, v in glossary.items():
@@ -679,7 +677,8 @@ class DocumentContextVault:
             if global_summary:
                 short_summary = global_summary if len(global_summary) <= 120 else global_summary[:117] + "..."
                 context_parts.append(f"[Resumo Global: {short_summary}]")
-            context_parts.append(f"[Seção: {sec_title}]")
+            if sec and sec["section_title"]:
+                context_parts.append(f"[Seção: {sec['section_title']}]")
             
             if matched_terms:
                 terms_str = ", ".join([f"{k}->{v}" for k, v in matched_terms.items()])

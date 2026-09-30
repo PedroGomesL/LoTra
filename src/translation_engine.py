@@ -891,12 +891,12 @@ class TranslationPipeline:
         # 2. Prioridade de modelos candidatos
         candidate_priorities = [
             preferred_model,
-            "qwen2.5:3b",
             "qwen2.5:1.5b",
-            "llama3.2:3b",
-            "llama3.2:1b",
-            "qwen2.5:7b",
             "qwen2.5:0.5b",
+            "qwen2.5:3b",
+            "llama3.2:1b",
+            "llama3.2:3b",
+            "qwen2.5:7b",
         ]
         for cand in candidate_priorities:
             for inst in installed:
@@ -911,8 +911,47 @@ class TranslationPipeline:
 
         return installed[0] if installed else None
 
-    def _query_ollama(self, model: str, prompt: str, timeout: float = 20.0) -> Optional[str]:
-        """Tenta comunicação local com Ollama se o servidor estiver ativo."""
+    def _is_valid_translation(self, text: str) -> bool:
+        """
+        Validador de Sanidade da Tradução:
+        Detecta e rejeita alucinações de recusa, desculpas de LLMs e loops degenerativos de repetição infinita.
+        """
+        if not text or len(text.strip()) < 2:
+            return False
+            
+        lower_text = text.lower()
+        
+        # 1. Padrões de recusa, desculpas ou meta-comentários da LLM
+        refusal_patterns = [
+            "o texto fornecido",
+            "não está relacionado",
+            "categoria de texto",
+            "precisamos entender o contexto",
+            "para traduzir o texto",
+            "como uma inteligência artificial",
+            "como um modelo de linguagem",
+            "não posso traduzir",
+            "sinto muito",
+            "desculpe, mas",
+            "aqui está a tradução",
+            "tradução direta:"
+        ]
+        for pat in refusal_patterns:
+            if pat in lower_text:
+                return False
+                
+        # 2. Detecção de degeneração / loop infinito de frases repetidas
+        sentences = [s.strip() for s in re.split(r'[.!?]+', text) if len(s.strip()) > 15]
+        if len(sentences) >= 3:
+            # Se mais de 35% das sentenças forem duplicadas
+            unique_sentences = set(sentences)
+            if len(unique_sentences) / len(sentences) < 0.65:
+                return False
+                
+        return True
+
+    def _query_ollama(self, model: str, prompt: str, timeout: float = 25.0) -> Optional[str]:
+        """Tenta comunicação local com Ollama se o servidor estiver ativo com proteção anti-loop."""
         if not self._is_ollama_available():
             return None
 
@@ -922,9 +961,11 @@ class TranslationPipeline:
             "prompt": prompt,
             "stream": False,
             "options": {
-                "temperature": 0.1,
+                "temperature": 0.15,
                 "top_p": 0.9,
-                "num_predict": 512
+                "repeat_penalty": 1.18,
+                "repeat_last_n": 64,
+                "num_predict": 1024
             }
         }).encode("utf-8")
 
@@ -947,7 +988,10 @@ class TranslationPipeline:
                             res = res[len("tradução:"):].strip()
                         if res.lower().startswith("tradução :"):
                             res = res[len("tradução :"):].strip()
-                        return res
+                            
+                        # Validação rigorosa de sanidade da tradução
+                        if self._is_valid_translation(res):
+                            return res
         except Exception:
             return None
         return None
@@ -1005,11 +1049,11 @@ class TranslationPipeline:
         # Nível 2: Inferência via Ollama Local com modelo instalado dinamicamente
         if self._is_ollama_available():
             ollama_model_map = {
-                "marian_mt": "qwen2.5:0.5b",
+                "marian_mt": "qwen2.5:1.5b",
                 "qwen_0.5b": "qwen2.5:0.5b",
                 "qwen_1.5b": "qwen2.5:1.5b",
                 "llama_3.2_1b": "llama3.2:1b",
-                "qwen_3b": "qwen2.5:3b",
+                "qwen_3b": "qwen2.5:1.5b",
                 "llama_3.2_3b": "llama3.2:3b",
                 "qwen_7b": "qwen2.5:7b"
             }

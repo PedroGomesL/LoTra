@@ -41,8 +41,11 @@ a = Analysis(
     ],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        'torch', 'transformers', 'tokenizers', 'safetensors', 'sympy', 'jinja2',
+        'pandas', 'matplotlib', 'seaborn', 'shiny', 'shinychat', 'huggingface_hub',
+        'optimum', 'ctranslate2', 'scipy', 'pyarrow'
+    ],
     noarchive=False,
     optimize=0,
 )

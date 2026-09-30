@@ -192,6 +192,22 @@ class TestLoTraBugsAndUI(unittest.TestCase):
             self.assertAlmostEqual(g, 92, delta=18, msg="Componente G deve coincidir com #0f5c6e")
             self.assertAlmostEqual(b, 110, delta=18, msg="Componente B deve coincidir com #0f5c6e")
 
+    def test_anti_hallucination_and_repetition_loop_detection(self):
+        """Valida a rejeição imediata de loops repetitivos e meta-respostas de recusa da LLM."""
+        pipeline = TranslationPipeline()
+        
+        # 1. Simula resposta alucinada repetitiva reportada pelo usuário
+        repetitive_hallucination = (
+            "O texto fornecido está em inglês e não está relacionado diretamente à categoria de texto principal que você está solicitando. "
+            "Para traduzir o texto para o português brasileiro, precisamos entender o contexto e a ideia principal. No entanto, o texto fornecido não está relacionado diretamente à categoria de texto principal que você está solicitando. "
+            "Para traduzir o texto para o português brasileiro, precisamos entender o contexto e a ideia principal. No entanto, o texto fornecido não está relacionado diretamente à categoria de texto principal que você está solicitando."
+        )
+        self.assertFalse(pipeline._is_valid_translation(repetitive_hallucination), "O validador DEVE rejeitar loops e meta-comentários.")
+
+        # 2. Resposta legítima deve ser aceita
+        clean_translation = "Os sistemas de interação humano-IA são tipicamente projetados para apoiar diretamente as tarefas humanas."
+        self.assertTrue(pipeline._is_valid_translation(clean_translation), "Traduções legítimas devem ser aceitas normalmente.")
+
 def run_tests():
     suite = unittest.TestLoader().loadTestsFromTestCase(TestLoTraBugsAndUI)
     runner = unittest.TextTestRunner(verbosity=2)

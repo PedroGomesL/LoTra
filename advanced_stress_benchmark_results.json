@@ -1,0 +1,122 @@
+[
+  {
+    "test_id": "TEST_1_GIRIAS_E_LINGUAGEM_COLOQUIAL",
+    "title": "Gírias, Expressões Idiomáticas e Linguagem Coloquial",
+    "source_en": "Man, out of nowhere the guy came to bullshit the hangout, dropped that fib on the crew and tried to act smart, but everyone saw that he was just trying to play dead because he was pissed off about the brush-off he got.",
+    "llm": {
+      "model": "qwen2.5:1.5b",
+      "latency_ms": 2502.49,
+      "throughput_tps": 26.51,
+      "tokens": 58,
+      "translation": "O cara veio lá de repente para contar bobagem, bateu um papo mentiroso na equipe e tentou parecer inteligente, mas todos viam que ele estava apenas fingindo estar morto porque estava chocado com o recado que recebeu."
+    },
+    "marian": {
+      "model": "Helsinki-NLP/opus-mt-tc-big-en-pt",
+      "latency_ms": 2516.81,
+      "throughput_tps": 17.48,
+      "tokens": 44,
+      "translation": "Homem, do nada o cara veio para enganar o hangout, deixou cair aquela ficha sobre a tripulação e tentou agir de forma inteligente, mas todo mundo viu que ele estava apenas tentando jogar morto porque ele estava chateado com a escovação que ele tem."
+    },
+    "speedup_ratio": 0.99
+  },
+  {
+    "test_id": "TEST_2_SINTAXE_ENCAIXADA_LONGA",
+    "title": "Oração Subordinada Encaixada / Sintaxe Longa Complexa",
+    "source_en": "The report that the technical committee, whose members were appointed under intense political pressure last week, presented late last night to the lawmakers who defend the reform, although it was riddled with obvious methodological flaws, ended up being approved unanimously.",
+    "llm": {
+      "model": "qwen2.5:1.5b",
+      "latency_ms": 2831.06,
+      "throughput_tps": 26.57,
+      "tokens": 66,
+      "translation": "O relatório apresentado pela comissão técnica, que foi nomeada sob pressão política intensa na semana passada, foi entregue à legislatura que defende a reforma, apesar de ser repleto de erros metodológicos evidentes, acabou sendo aprovado por unanimidade."
+    },
+    "marian": {
+      "model": "Helsinki-NLP/opus-mt-tc-big-en-pt",
+      "latency_ms": 2397.75,
+      "throughput_tps": 16.27,
+      "tokens": 39,
+      "translation": "O relatório que o comitê técnico, cujos membros foram nomeados sob intensa pressão política na semana passada, apresentou na noite passada aos legisladores que defendem a reforma, embora estivesse repleto de falhas metodológicas óbvias, acabou sendo aprovado por unanimidade."
+    },
+    "speedup_ratio": 1.18
+  },
+  {
+    "test_id": "TEST_3_PROVERBIOS_E_EXPRESSOES_MISTAS",
+    "title": "Provérbios e Expressões Idiomáticas Mistas",
+    "source_en": "The party was great, but since not everything is peaches and cream and in the land of the blind the one-eyed man is king, the boss showed up all of a sudden, wetted everyone's whistle and washed his hands before the roof caved in on him",
+    "llm": {
+      "model": "qwen2.5:1.5b",
+      "latency_ms": 3260.62,
+      "throughput_tps": 26.46,
+      "tokens": 77,
+      "translation": "A festa foi ótima, mas não é que tudo seja perfeito e limpo, e em um mundo de cegos, o homem com um único olho é o rei. O chefe apareceu de repente, encharcando todos com seu perfume, limpou as mãos antes que o telhado caiu sobre ele."
+    },
+    "marian": {
+      "model": "Helsinki-NLP/opus-mt-tc-big-en-pt",
+      "latency_ms": 2622.68,
+      "throughput_tps": 17.16,
+      "tokens": 45,
+      "translation": "A festa foi ótima, mas como nem tudo é pêssegos e creme e na terra dos cegos o homem de um olho é rei, o chefe apareceu de repente, molhando o apito de todos e lavou as mãos antes que o telhado cedesse sobre ele."
+    },
+    "speedup_ratio": 1.24
+  },
+  {
+    "test_id": "TEST_4_VOCABULARIO_ROCOCO_E_LABIRINTICO",
+    "title": "Vocabulário Rococó, Labiríntico e Múltiplos Provérbios",
+    "source_en": "Although the erstwhile prelate—who, notwithstanding the bureaucratic kerfuffle that the regional synod kicked up during the preceding fiscal quarter, tried to high-hat the ecclesiastical vetting committee—surreptitiously proffered an unctuous exculpation reeking of high-falutin’ tomfoolery, the appellate panel, whose members (several of whom were sweating bullets over pending indictments) decided to play possum, ultimately ratified a slipshod rubric that, whilst tickling the fat cats upstairs, left the rank-and-file holding the bag, thereby proving that a bird in the hand is worth two in the bush when the chickens come home to roost.",
+    "llm": {
+      "model": "qwen2.5:1.5b",
+      "latency_ms": 7433.79,
+      "throughput_tps": 25.6,
+      "tokens": 169,
+      "translation": "Embora o antigo arcebispo, que, apesar do caos burocrático que o synod regional provocou durante o quarto trimestre anterior, tentasse exculpar-se com um exagerado elogio de alto astral, o tribunal apelativo, com seus membros (alguns de quem estavam suando por causa de acusações pendentes), decidiu se esconder, finalmente, ratificando uma rubrica desajeitada que, embora tivesse agradado aos donos de bico em cima, deixou os demais em situação de ter que assumir as consequências, demonstrando que, quando as galinhas voltarem para casa, vale mais ter um galinha do que dois em um campo."
+    },
+    "marian": {
+      "model": "Helsinki-NLP/opus-mt-tc-big-en-pt",
+      "latency_ms": 4972.73,
+      "throughput_tps": 10.66,
+      "tokens": 53,
+      "translation": "Embora o antigo prelado-que, apesar do kerfuffle burocrático que o sínodo regional iniciou durante o trimestre fiscal anterior, tentou alta-hat o comitê de verificação eclesiástica-surpreendentemente ofereceu uma untuous exculpation cheirando a tomfoolery de alta falutin ', o painel de apelação, cujos membros (vários dos quais estavam suando balas sobre as acusações pendentes), decidiu jogar,"
+    },
+    "speedup_ratio": 1.49
+  },
+  {
+    "test_id": "TEST_5_ANAFORAS_E_RASTREAMENTO_ENTIDADES",
+    "title": "Resolução de Anáforas, Entidades Fictícias ('The former' vs 'The latter')",
+    "source_en": "The parent corporation 'OmniCorp' notified its freshly acquired subsidiary 'TechZika'—whose flagship software 'Dadobras' triggered a massive legal debacle that it tried to sweep under the rug—that if the latter fails to restructure it entirely before the fatal deadline expires next Friday, the former will take draconian legal action against the majority shareholders who defended it, which will compel them to sue the latter for moral damages, thereby triggering a domino effect that forces the parent to offload it to third parties so they can sanitize it without the tax authorities realizing that it was the former that originally botched it.",
+    "llm": {
+      "model": "qwen2.5:1.5b",
+      "latency_ms": 7372.27,
+      "throughput_tps": 24.67,
+      "tokens": 161,
+      "translation": "A parenta corporação 'OmniCorp' informou à sua subsidiária 'TechZika'—que é o seu software principal 'Dadobras' que causou um grande escândalo legal que tentou esconder—que se a posteriori não reestrutura completamente antes da data limite fatal que se aproxima na próxima quinta-feira, a anterior ação legal contra os acionistas maiores que defendiram a posteriori, que exigirão que eles sejam responsabilizados por danos morais, provocando assim um efeito dominó que obriga a anterior a vender a posteriori para terceiros para que possa saná-la sem que os taxistas percebam que foi a anterior que originalmente deu errado."
+    },
+    "marian": {
+      "model": "Helsinki-NLP/opus-mt-tc-big-en-pt",
+      "latency_ms": 6025.06,
+      "throughput_tps": 10.95,
+      "tokens": 66,
+      "translation": "A empresa-mãe 'OmniCorp' notificou sua subsidiária recém-adquirida 'TechZika' - cujo software principal 'Dadobras' desencadeou um enorme desastre legal que tentou varrer sob o tapete - que, se o último não o reestruturar inteiramente antes do prazo fatal expirar na próxima sexta-feira, o primeiro tomará uma ação legal draconiana contra os acionistas majoritários que o defenderam, o que os obrigará a processar o último por danos morais."
+    },
+    "speedup_ratio": 1.22
+  },
+  {
+    "test_id": "TEST_6_POLISSEMIA_EXTREMA_E_TROCADILHOS",
+    "title": "Polissemia Extrema (Conductor, Concert, Baton, Battered)",
+    "source_en": "The conductor's impromptu concert regarding the contentious concert-pitch reform couldn't be sanctioned because the erratic maestro remained entirely without concert control after losing the musical baton he used to direct the orchestra under the iron baton of the board, which subsequently battered the battered battered-cod vendor who happened to be conducting a parallel interview about the conduct of the conductor.",
+    "llm": {
+      "model": "qwen2.5:1.5b",
+      "latency_ms": 5551.08,
+      "throughput_tps": 19.99,
+      "tokens": 98,
+      "translation": "O convidado improvisou uma apresentação musical sobre a reforma do preço dos concertos, mas isso não foi aprovado porque o maestro, que estava sem controle musical após perder o batom musical que usava para dirigir a orquestra sob o batom ferro-negro do conselho, continuou batendo em um vendedor de convidados que estava fazendo uma entrevista paralela sobre o comportamento do convidado."
+    },
+    "marian": {
+      "model": "Helsinki-NLP/opus-mt-tc-big-en-pt",
+      "latency_ms": 5109.41,
+      "throughput_tps": 13.11,
+      "tokens": 67,
+      "translation": "O concerto improvisado do maestro em relação à controversa reforma do pitch de concerto não poderia ser sancionado porque o maestro errático permaneceu inteiramente sem controle de concerto depois de perder o bastão musical que ele usou para dirigir a orquestra sob o bastão de ferro do conselho, que posteriormente agrediu o vendedor de bacalhau batido que estava conduzindo uma entrevista paralela sobre a conduta do maestro."
+    },
+    "speedup_ratio": 1.09
+  }
+]

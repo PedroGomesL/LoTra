@@ -117,7 +117,7 @@ class LoTraMainWindow:
         ollama_active = False
         ollama_model = ""
         if hasattr(self.app, "translator") and self.app.translator._is_ollama_available():
-            ollama_model = self.app.translator._get_available_ollama_model("qwen2.5:3b") or ""
+            ollama_model = self.app.translator._get_available_ollama_model("qwen2.5:1.5b") or ""
             ollama_active = bool(ollama_model)
 
         dot_color = "#4ade80" if ollama_active else "#f59e0b"

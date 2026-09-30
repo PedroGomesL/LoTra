@@ -1,0 +1,184 @@
+[
+  {
+    "test_id": "TEST_1_DIREITO_CONSTITUCIONAL",
+    "domain": "Direito Constitucional & Teoria do Estado",
+    "source_tokens": 60,
+    "generated_tokens": 57,
+    "latency_ms": 8961.35,
+    "tokens_per_sec": 6.36,
+    "engine": "Ollama Local (qwen2.5:3b)",
+    "model": "Ollama (qwen2.5:3b)",
+    "bleu": {
+      "bleu": 44.07,
+      "p1": 73.68,
+      "p2": 51.79,
+      "p3": 38.18,
+      "p4": 27.78,
+      "bp": 0.9826
+    },
+    "accuracy_pct": 97.56,
+    "untranslated_count": 1,
+    "untranslated_words": [
+      "social"
+    ],
+    "foreign_technical_terms": [
+      "iter",
+      "montesquieu"
+    ],
+    "translated_text": "Princípio da separação de poderes, estabelecido por Montesquieu, opera como um sistema de controle e equilíbrio destinado a prevenir a arbitrariedade estatal e garantir os direitos fundamentais. Mutação constitucional, por sua vez, evidencia a plasticidade do texto normativo diante das demandas factuais da mutabilidade social, formalizando-se em contraposição à emenda, que exige o iter legislativo rígido derivado.",
+    "reference_text": "O princípio da separação dos poderes, consagrado por Montesquieu, opera como um sistema de freios e contrapesos projetado para evitar o arbítrio estatal e salvaguardar os direitos fundamentais. A mutação constitucional, por sua vez, evidencia a plasticidade do texto normativo diante das demandas fáticas da mutabilidade social, distinguindo-se formalmente da reforma, que exige o rígido iter legislativo derivado."
+  },
+  {
+    "test_id": "TEST_2_ASTROFISICA_NUCLEAR",
+    "domain": "Astrofísica & Cosmologia",
+    "source_tokens": 52,
+    "generated_tokens": 53,
+    "latency_ms": 8472.83,
+    "tokens_per_sec": 6.26,
+    "engine": "Ollama Local (qwen2.5:3b)",
+    "model": "Ollama (qwen2.5:3b)",
+    "bleu": {
+      "bleu": 57.51,
+      "p1": 83.02,
+      "p2": 61.54,
+      "p3": 50.98,
+      "p4": 42.0,
+      "bp": 1.0
+    },
+    "accuracy_pct": 89.47,
+    "untranslated_count": 4,
+    "untranslated_words": [
+      "nucleosynthesis",
+      "wolf",
+      "rayet",
+      "primordial"
+    ],
+    "foreign_technical_terms": [
+      "bang",
+      "big"
+    ],
+    "translated_text": "Primordial nucleosynthesis ocorreu nos primeiros minutos após o Big Bang, sintetizando núcleos de hidrogênio e hélio e resquícios de lítio. No entanto, a abundância observada de elementos pesados no meio interstelar depende principalmente da nucleosíntese estelar em supernovas de tipo II e da enriquecimento químico impulsionado pelas ventos estelares das estrelas de Wolf-Rayet.",
+    "reference_text": "A nucleossíntese primordial ocorreu nos primeiros minutos após o Big Bang, sintetizando núcleos de hidrogênio e hélio e traços de lítio. No entanto, a abundância observada de elementos pesados no meio interestelar depende primariamente da nucleossíntese estelar em supernovas do tipo II e do enriquecimento químico impulsionado pelos ventos estelares de estrelas Wolf-Rayet."
+  },
+  {
+    "test_id": "TEST_3_BIOLOGIA_MOLECULAR",
+    "domain": "Biologia Molecular & Epigenética",
+    "source_tokens": 45,
+    "generated_tokens": 48,
+    "latency_ms": 7570.9,
+    "tokens_per_sec": 6.34,
+    "engine": "Ollama Local (qwen2.5:3b)",
+    "model": "Ollama (qwen2.5:3b)",
+    "bleu": {
+      "bleu": 43.29,
+      "p1": 85.42,
+      "p2": 53.19,
+      "p3": 34.78,
+      "p4": 22.22,
+      "bp": 1.0
+    },
+    "accuracy_pct": 97.06,
+    "untranslated_count": 1,
+    "untranslated_words": [
+      "post"
+    ],
+    "foreign_technical_terms": [
+      "cpg",
+      "rna",
+      "dna"
+    ],
+    "translated_text": "Regulação epigenética da expressão gênica envolve modificações post-translacionais de histonas, como metilação e acossilação, bem como metilação de DNA em ilhas de CpG. Essas mecanismos modulam a acessibilidade do cromatina para a polimerase II de RNA, alterando o fenótipo celular sem modificar a sequência base subjacente do genoma.",
+    "reference_text": "A regulação epigenética da expressão gênica envolve modificações pós-traducionais de histonas, tais como metilação e acetilação, bem como metilação do DNA em ilhas CpG. Esses mecanismos modulam a acessibilidade da cromatina à RNA polimerase II, alterando o fenótipo celular sem modificar a sequência subjacente de nucleotídeos do genoma."
+  },
+  {
+    "test_id": "TEST_4_TEORIA_LITERARIA",
+    "domain": "Teoria Literária & Filosofia da Linguagem",
+    "source_tokens": 54,
+    "generated_tokens": 54,
+    "latency_ms": 5812.78,
+    "tokens_per_sec": 9.29,
+    "engine": "Ollama Local (qwen2.5:3b)",
+    "model": "Ollama (qwen2.5:3b)",
+    "bleu": {
+      "bleu": 0.16,
+      "p1": 3.7,
+      "p2": 1.89,
+      "p3": 0.0,
+      "p4": 0.0,
+      "bp": 0.9636
+    },
+    "accuracy_pct": 8.11,
+    "untranslated_count": 34,
+    "untranslated_words": [
+      "that",
+      "novel",
+      "category",
+      "characters",
+      "consciousness",
+      "narrative",
+      "turn",
+      "polyphony",
+      "monology",
+      "traditional",
+      "historical",
+      "space",
+      "for",
+      "intersection",
+      "the",
+      "aesthetic",
+      "concept",
+      "time",
+      "with",
+      "realization",
+      "work",
+      "granting",
+      "allowing",
+      "becoming",
+      "voices",
+      "autonomy",
+      "relative",
+      "breaks",
+      "functions",
+      "ontological",
+      "chronotope",
+      "author",
+      "structures",
+      "art"
+    ],
+    "foreign_technical_terms": [
+      "mikhail",
+      "bakhtin"
+    ],
+    "translated_text": "Mikhail Bakhtin's concept of polyphony breaks with the monology of the traditional novel, granting the characters' voices an ontological autonomy relative to the author's consciousness. The chronotope, in turn, functions as the space-time intersection category that structures narrative architecture, allowing for the aesthetic realization of historical becoming in the work of art.",
+    "reference_text": "O conceito de polifonia de Mikhail Bakhtin rompe com a monologia do romance tradicional, concedendo às vozes das personagens uma autonomia ontológica em relação à consciência do autor. O cronotopo, por sua vez, funciona como a categoria de intersecção espaço-temporal que estrutura a arquitetônica narrativa, permitindo a realização estética do devir histórico na obra de arte."
+  },
+  {
+    "test_id": "TEST_5_MACROECONOMIA",
+    "domain": "Macroeconomia & Teoria Monetária",
+    "source_tokens": 45,
+    "generated_tokens": 48,
+    "latency_ms": 6876.37,
+    "tokens_per_sec": 6.98,
+    "engine": "Ollama Local (qwen2.5:3b)",
+    "model": "Ollama (qwen2.5:3b)",
+    "bleu": {
+      "bleu": 66.67,
+      "p1": 81.25,
+      "p2": 72.34,
+      "p3": 63.04,
+      "p4": 53.33,
+      "bp": 1.0
+    },
+    "accuracy_pct": 94.87,
+    "untranslated_count": 2,
+    "untranslated_words": [
+      "off",
+      "trade"
+    ],
+    "foreign_technical_terms": [
+      "phillips"
+    ],
+    "translated_text": "A curva de Phillips ajustada às expectativas postula que não existe um trade-off permanente entre inflação e desemprego no longo prazo. Consequentemente, políticas monetárias expansivas inesperadas geram apenas efeitos nominais sobre a produção agregada, resultando na neutralidade da moeda quando os agentes econômicos ajustam perfeitamente suas projeções inflacionárias.",
+    "reference_text": "A curva de Phillips aumentada pelas expectativas postula que não há trade-off permanente entre inflação e desemprego no longo prazo. Consequentemente, políticas monetárias expansionistas não antecipadas geram apenas efeitos nominais sobre o produto agregado, resultando na neutralidade da moeda quando os agentes econômicos ajustam perfeitamente suas projeções inflacionárias."
+  }
+]

@@ -1,0 +1,237 @@
+[
+  {
+    "test_id": "TEST_1_DIREITO_CONSTITUCIONAL",
+    "domain": "Direito Constitucional & Teoria do Estado",
+    "source": "The principle of the separation of powers, enshrined by Montesquieu, operates as a system of checks and balances designed to prevent state arbitrariness and safeguard fundamental rights. Constitutional mutation, in turn, evidences the plasticity of the normative text in the face of the factual demands of social mutability, formally distinguishing itself from amendment, which requires the rigid derived legislative iter.",
+    "reference": "O princípio da separação dos poderes, consagrado por Montesquieu, opera como um sistema de freios e contrapesos projetado para evitar o arbítrio estatal e salvaguardar os direitos fundamentais. A mutação constitucional, por sua vez, evidencia a plasticidade do texto normativo diante das demandas fáticas da mutabilidade social, distinguindo-se formalmente da reforma, que exige o rígido iter legislativo derivado.",
+    "llm": {
+      "model": "qwen2.5:1.5b",
+      "latency_ms": 4968.4,
+      "tokens_per_sec": 23.49,
+      "tokens": 54,
+      "bleu": {
+        "bleu": 35.23,
+        "p1": 68.52,
+        "p2": 47.17,
+        "p3": 32.69,
+        "p4": 19.61,
+        "bp": 0.9286
+      },
+      "accuracy_pct": 97.56,
+      "untranslated_count": 1,
+      "untranslated_words": [
+        "social"
+      ],
+      "translated_text": "A separação dos poderes, enriquecida por Montesquieu, opera como sistema de controles e equilíbrios destinados a prevenir arbitrariedade do estado e garantir direitos fundamentais. A mutação constitucional, por outro lado, evidencia a plasticidade do texto normativo diante das exigências fáticas da mutabilidade social, formalmente distanciando-se da alteração, que exige o iter legislativo derivado rigidamente."
+    },
+    "marian": {
+      "model": "Helsinki-NLP/opus-mt-tc-big-en-pt",
+      "latency_ms": 4946.1,
+      "tokens_per_sec": 11.73,
+      "tokens": 58,
+      "bleu": {
+        "bleu": 62.06,
+        "p1": 79.31,
+        "p2": 66.67,
+        "p3": 57.14,
+        "p4": 49.09,
+        "bp": 1.0
+      },
+      "accuracy_pct": 97.56,
+      "untranslated_count": 1,
+      "untranslated_words": [
+        "social"
+      ],
+      "translated_text": "O princípio da separação de poderes, consagrado por Montesquieu, funciona como um sistema de freios e contrapesos destinados a prevenir a arbitrariedade estatal e salvaguardar os direitos fundamentais. A mutação constitucional, por sua vez, evidencia a plasticidade do texto normativo diante das demandas factuais da mutabilidade social, distinguindo-se formalmente da emenda, que requer o rígido iteração legislativa derivado."
+    },
+    "speedup_marian_vs_llm": 1.0
+  },
+  {
+    "test_id": "TEST_2_ASTROFISICA_NUCLEAR",
+    "domain": "Astrofísica & Cosmologia",
+    "source": "Primordial nucleosynthesis occurred within the first few minutes after the Big Bang, synthesizing hydrogen and helium nuclei and traces of lithium. However, the observed abundance of heavy elements in the interstellar medium depends primarily on stellar nucleosynthesis in type II supernovae and the chemical enrichment driven by stellar winds from Wolf-Rayet stars.",
+    "reference": "A nucleossíntese primordial ocorreu nos primeiros minutos após o Big Bang, sintetizando núcleos de hidrogênio e hélio e traços de lítio. No entanto, a abundância observada de elementos pesados no meio interestelar depende primariamente da nucleossíntese estelar em supernovas do tipo II e do enriquecimento químico impulsionado pelos ventos estelares de estrelas Wolf-Rayet.",
+    "llm": {
+      "model": "qwen2.5:1.5b",
+      "latency_ms": 5382.74,
+      "tokens_per_sec": 22.3,
+      "tokens": 56,
+      "bleu": {
+        "bleu": 37.78,
+        "p1": 71.43,
+        "p2": 43.64,
+        "p3": 31.48,
+        "p4": 20.75,
+        "bp": 1.0
+      },
+      "accuracy_pct": 92.11,
+      "untranslated_count": 3,
+      "untranslated_words": [
+        "wolf",
+        "rayet",
+        "primordial"
+      ],
+      "translated_text": "A formação primordial dos núcleos ocorreu durante os primeiros poucos minutos após o Big Bang, criando hidrogênio e hélio núcleos e rastros de litio. No entanto, a abundância observada de elementos pesados no meio interstelar depende principalmente da formação nucleossintética estelar em supernovas tipo II e da enriquecimento químico causado por ventos estelares de estrelas Wolf-Rayet."
+    },
+    "marian": {
+      "model": "Helsinki-NLP/opus-mt-tc-big-en-pt",
+      "latency_ms": 4395.7,
+      "tokens_per_sec": 12.06,
+      "tokens": 53,
+      "bleu": {
+        "bleu": 90.08,
+        "p1": 96.23,
+        "p2": 92.31,
+        "p3": 88.24,
+        "p4": 84.0,
+        "bp": 1.0
+      },
+      "accuracy_pct": 92.11,
+      "untranslated_count": 3,
+      "untranslated_words": [
+        "wolf",
+        "rayet",
+        "primordial"
+      ],
+      "translated_text": "A nucleossíntese primordial ocorreu nos primeiros minutos após o Big Bang, sintetizando núcleos de hidrogênio e hélio e traços de lítio. No entanto, a abundância observada de elementos pesados no meio interestelar depende principalmente da nucleossíntese estelar em supernovas do tipo II e do enriquecimento químico impulsionado por ventos estelares de estrelas Wolf-Rayet."
+    },
+    "speedup_marian_vs_llm": 1.22
+  },
+  {
+    "test_id": "TEST_3_BIOLOGIA_MOLECULAR",
+    "domain": "Biologia Molecular & Epigenética",
+    "source": "Epigenetic regulation of gene expression involves post-translational modifications of histones, such as methylation and acetylation, as well as DNA methylation at CpG islands. These mechanisms modulate chromatin accessibility to RNA polymerase II, altering the cellular phenotype without modifying the underlying nucleotide sequence of the genome.",
+    "reference": "A regulação epigenética da expressão gênica envolve modificações pós-traducionais de histonas, tais como metilação e acetilação, bem como metilação do DNA em ilhas CpG. Esses mecanismos modulam a acessibilidade da cromatina à RNA polimerase II, alterando o fenótipo celular sem modificar a sequência subjacente de nucleotídeos do genoma.",
+    "llm": {
+      "model": "qwen2.5:1.5b",
+      "latency_ms": 4672.04,
+      "tokens_per_sec": 23.56,
+      "tokens": 52,
+      "bleu": {
+        "bleu": 23.27,
+        "p1": 67.31,
+        "p2": 33.33,
+        "p3": 16.0,
+        "p4": 8.16,
+        "bp": 1.0
+      },
+      "accuracy_pct": 97.06,
+      "untranslated_count": 1,
+      "untranslated_words": [
+        "histones"
+      ],
+      "translated_text": "Regulação epigenética da expressão de genes envolve modificações posteriores dos histones, como a metilação e a acetilação, bem como a metilação do DNA em isolas CpG. Essas mecanismos alteram a acessibilidade do acúmulo de DNA para a polimerase RNA II, alterando a fenômeno celular sem modificar a sequência nucleotídica do genoma subjacente."
+    },
+    "marian": {
+      "model": "Helsinki-NLP/opus-mt-tc-big-en-pt",
+      "latency_ms": 4575.1,
+      "tokens_per_sec": 10.27,
+      "tokens": 47,
+      "bleu": {
+        "bleu": 77.63,
+        "p1": 95.74,
+        "p2": 82.61,
+        "p3": 73.33,
+        "p4": 68.18,
+        "bp": 0.9789
+      },
+      "accuracy_pct": 100.0,
+      "untranslated_count": 0,
+      "untranslated_words": [],
+      "translated_text": "A regulação epigenética da expressão gênica envolve modificações pós-traducionais de histonas, como metilação e acetilação, bem como metilação de DNA nas ilhas CpG. Esses mecanismos modulam a acessibilidade da cromatina à RNA polimerase II, alterando o fenótipo celular sem modificar a sequência de nucleotídeos subjacente do genoma."
+    },
+    "speedup_marian_vs_llm": 1.02
+  },
+  {
+    "test_id": "TEST_4_TEORIA_LITERARIA",
+    "domain": "Teoria Literária & Filosofia da Linguagem",
+    "source": "Mikhail Bakhtin's concept of polyphony breaks with the monology of the traditional novel, granting the characters' voices an ontological autonomy relative to the author's consciousness. The chronotope, in turn, functions as the space-time intersection category that structures narrative architectonics, allowing for the aesthetic realization of historical becoming in the work of art.",
+    "reference": "O conceito de polifonia de Mikhail Bakhtin rompe com a monologia do romance tradicional, concedendo às vozes das personagens uma autonomia ontológica em relação à consciência do autor. O cronotopo, por sua vez, funciona como a categoria de intersecção espaço-temporal que estrutura a arquitetônica narrativa, permitindo a realização estética do devir histórico na obra de arte.",
+    "llm": {
+      "model": "qwen2.5:1.5b",
+      "latency_ms": 4412.73,
+      "tokens_per_sec": 23.7,
+      "tokens": 50,
+      "bleu": {
+        "bleu": 42.82,
+        "p1": 76.0,
+        "p2": 53.06,
+        "p3": 39.58,
+        "p4": 34.04,
+        "bp": 0.8869
+      },
+      "accuracy_pct": 100.0,
+      "untranslated_count": 0,
+      "untranslated_words": [],
+      "translated_text": "O conceito de polifonia de Mikhail Bakhtin rompe com a monologia do clássico romance, dando autonomia ontológica às vozes dos personagens em relação à consciência do autor. Em seguida, o cronotopo funciona como categoria espacial-temporal que estrutura a arquitetônica narrativa, permitindo a aperfeiçoamento estético do processo histórico no trabalho artístico."
+    },
+    "marian": {
+      "model": "Helsinki-NLP/opus-mt-tc-big-en-pt",
+      "latency_ms": 4699.97,
+      "tokens_per_sec": 11.91,
+      "tokens": 56,
+      "bleu": {
+        "bleu": 84.02,
+        "p1": 92.86,
+        "p2": 87.27,
+        "p3": 81.48,
+        "p4": 75.47,
+        "bp": 1.0
+      },
+      "accuracy_pct": 100.0,
+      "untranslated_count": 0,
+      "untranslated_words": [],
+      "translated_text": "O conceito de polifonia de Mikhail Bakhtin rompe com a monologia do romance tradicional, concedendo às vozes dos personagens uma autonomia ontológica em relação à consciência do autor. O cronotopo, por sua vez, funciona como a categoria de interseção espaço-tempo que estrutura a arquitetura narrativa, permitindo a realização estética do devir histórico na obra de arte."
+    },
+    "speedup_marian_vs_llm": 0.94
+  },
+  {
+    "test_id": "TEST_5_MACROECONOMIA",
+    "domain": "Macroeconomia & Teoria Monetária",
+    "source": "The expectations-augmented Phillips curve postulates that there is no permanent trade-off between inflation and unemployment in the long run. Consequently, unanticipated expansionary monetary policies generate only nominal effects on aggregate output, resulting in the neutrality of money when economic agents perfectly adjust their inflationary projections.",
+    "reference": "A curva de Phillips aumentada pelas expectativas postula que não há trade-off permanente entre inflação e desemprego no longo prazo. Consequentemente, políticas monetárias expansionistas não antecipadas geram apenas efeitos nominais sobre o produto agregado, resultando na neutralidade da moeda quando os agentes econômicos ajustam perfeitamente suas projeções inflacionárias.",
+    "llm": {
+      "model": "qwen2.5:1.5b",
+      "latency_ms": 4452.32,
+      "tokens_per_sec": 22.85,
+      "tokens": 48,
+      "bleu": {
+        "bleu": 37.26,
+        "p1": 70.83,
+        "p2": 44.68,
+        "p3": 30.43,
+        "p4": 20.0,
+        "bp": 1.0
+      },
+      "accuracy_pct": 94.87,
+      "untranslated_count": 2,
+      "untranslated_words": [
+        "off",
+        "trade"
+      ],
+      "translated_text": "A curva Phillips aprimorada com expectativas afirma que não há um trade-off permanente entre inflação e desemprego no longo prazo. Portanto, as políticas monetárias expansivas não-anticipadas geram apenas efeitos nominais sobre a produção agregada, resultando em neutralidade do dinheiro quando os agentes econômicos perfeitamente ajustam suas projeções inflacionárias."
+    },
+    "marian": {
+      "model": "Helsinki-NLP/opus-mt-tc-big-en-pt",
+      "latency_ms": 3532.77,
+      "tokens_per_sec": 13.59,
+      "tokens": 48,
+      "bleu": {
+        "bleu": 58.89,
+        "p1": 81.25,
+        "p2": 68.09,
+        "p3": 54.35,
+        "p4": 40.0,
+        "bp": 1.0
+      },
+      "accuracy_pct": 94.87,
+      "untranslated_count": 2,
+      "untranslated_words": [
+        "off",
+        "trade"
+      ],
+      "translated_text": "A curva de Phillips aumentada pelas expectativas postula que não há um trade-off permanente entre inflação e desemprego a longo prazo. Consequentemente, as políticas monetárias expansionistas imprevistas geram apenas efeitos nominais na produção agregada, resultando na neutralidade do dinheiro quando os agentes econômicos ajustam perfeitamente suas projeções inflacionárias."
+    },
+    "speedup_marian_vs_llm": 1.26
+  }
+]
