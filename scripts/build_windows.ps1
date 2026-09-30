@@ -19,7 +19,8 @@ Write-Host "   Iniciando Compilador LoTra para Windows (.exe)                   
 Write-Host "========================================================================" -ForegroundColor Cyan
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-Set-Location $scriptDir
+$repoRoot = Split-Path -Parent $scriptDir
+Set-Location $repoRoot
 
 $python = "python"
 try {
@@ -36,7 +37,8 @@ if (-not $hasPyinstaller) {
     & $python -m pip install pyinstaller
 }
 
-$buildArgs = @("build_windows.py", "--mode", $Mode)
+$buildScript = Join-Path $scriptDir "build_windows.py"
+$buildArgs = @($buildScript, "--mode", $Mode)
 if ($NoVerify) {
     $buildArgs += "--no-verify"
 }
@@ -46,7 +48,7 @@ Write-Host "[INFO] Executando build_windows.py..." -ForegroundColor Green
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "`n[SUCESSO] LoTra compilado com sucesso!" -ForegroundColor Green
-    Write-Host "Executável disponível em: $scriptDir\dist\LoTra.exe" -ForegroundColor Green
+    Write-Host "Executável disponível em: $repoRoot\dist\LoTra.exe" -ForegroundColor Green
 } else {
     Write-Error "Falha na compilação do LoTra (Exit code: $LASTEXITCODE)"
 }

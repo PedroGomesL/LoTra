@@ -14,11 +14,25 @@ Avalia:
 import os
 import json
 import time
-from accuracy_metrics import evaluate_translation_accuracy, compute_cer
+import sys
 
 BASE_DIR = os.path.dirname(__file__)
-DATASET_PATH = os.path.join(BASE_DIR, "dataset.json")
-OCR_RESULTS_PATH = os.path.join(BASE_DIR, "ocr_benchmark_results.json")
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+from accuracy_metrics import evaluate_translation_accuracy, compute_cer
+
+DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "data"))
+RESULTS_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "results"))
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+DATASET_PATH = os.path.join(DATA_DIR, "dataset.json")
+if not os.path.exists(DATASET_PATH):
+    DATASET_PATH = os.path.join(BASE_DIR, "dataset.json")
+
+OCR_RESULTS_PATH = os.path.join(RESULTS_DIR, "ocr_benchmark_results.json")
+if not os.path.exists(OCR_RESULTS_PATH):
+    OCR_RESULTS_PATH = os.path.join(BASE_DIR, "ocr_benchmark_results.json")
 
 with open(DATASET_PATH, "r", encoding="utf-8") as f:
     DATASET = json.load(f)
@@ -250,7 +264,7 @@ def run_translation_benchmark():
             "models_perf": models_perf
         })
         
-    out_file = os.path.join(BASE_DIR, "llm_translation_results.json")
+    out_file = os.path.join(RESULTS_DIR, "llm_translation_results.json")
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(benchmark_records, f, indent=2, ensure_ascii=False)
         

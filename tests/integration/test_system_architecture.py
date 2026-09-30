@@ -27,9 +27,12 @@ import json
 from pathlib import Path
 
 # Adiciona o diretório src ao path para importação modular
-SRC_DIR = Path(__file__).resolve().parent.parent / "src"
+ROOT_DIR = Path(__file__).resolve().parents[2]
+SRC_DIR = ROOT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from document_context_vault import DocumentContextVault
 from adaptive_engine_orchestrator import AdaptiveEngineOrchestrator, HardwareProfiler, OCR_ENGINES
@@ -205,7 +208,7 @@ def test_adaptive_orchestrator():
     assert rec_ram_stress["translation_model"] in ("marian_mt", "qwen_0.5b")
     
     # Teste D: GPU RTX 5060 Ti sob baixo uso
-    rec_gpu = orch_fast.select_optimal_pipeline(text_type="paragraph", simulated_cpu_stress=10.0, force_hardware="cuda")
+    rec_gpu = orch_fast.select_optimal_pipeline(text_type="paragraph", simulated_cpu_stress=10.0, simulated_ram_stress=25.0, force_hardware="cuda")
     print(f"Cenário 4 (Parágrafo / RTX 5060 Ti / SLA 250ms):")
     print(f"  Escolhido: {rec_gpu['ocr_name']} + {rec_gpu['model_name']}")
     print(f"  Latência Total Estimada: {rec_gpu['predicted_total_ms']} ms | Qualidade: {rec_gpu['combined_quality_score']}/10")
@@ -214,7 +217,7 @@ def test_adaptive_orchestrator():
     
     # Teste E: Com SLA de 400ms na GPU, deve selecionar modelo de qualidade máxima (Qwen 3B com 9.7/10)
     orch_quality = AdaptiveEngineOrchestrator(target_latency_ms=400.0)
-    rec_gpu_hq = orch_quality.select_optimal_pipeline(text_type="paragraph", force_hardware="cuda")
+    rec_gpu_hq = orch_quality.select_optimal_pipeline(text_type="paragraph", simulated_ram_stress=25.0, force_hardware="cuda")
     print(f"Cenário 5 (Parágrafo / RTX 5060 Ti / SLA 400ms - Modo Alta Fidelidade):")
     print(f"  Escolhido: {rec_gpu_hq['ocr_name']} + {rec_gpu_hq['model_name']}")
     print(f"  Latência Total: {rec_gpu_hq['predicted_total_ms']} ms | Qualidade: {rec_gpu_hq['combined_quality_score']}/10")
@@ -339,6 +342,15 @@ def test_translation_engine_onnx_and_fallback():
         assert "ONNX Neural Engine" in res_onnx["engine_used"]
 
     print("[PASS] Hierarquia de Fallback e ONNXTranslationEngine validados com sucesso!")
+
+import unittest
+
+class TestSystemArchitecture(unittest.TestCase):
+    def test_system_architecture_suite(self):
+        test_document_context_vault()
+        test_adaptive_orchestrator()
+        test_pdf_resilience_and_highlighter()
+        test_translation_engine_onnx_and_fallback()
 
 if __name__ == "__main__":
     test_document_context_vault()

@@ -1,0 +1,802 @@
+[
+  {
+    "id": "w1",
+    "type": "word_or_idiom",
+    "english": "unflinching",
+    "translation_pt": "inabalável",
+    "quality_score": 100.0,
+    "quality_note": "Perfeita (termo primário identificado)",
+    "models_perf": {
+      "qwen_2.5_1.5b": {
+        "cpu": {
+          "llm_only_ms": 339.8,
+          "ttft_ms": 247.5,
+          "end_to_end_direct_ms": 341.8,
+          "end_to_end_ocr_ms": 374.8
+        },
+        "gpu": {
+          "llm_only_ms": 42.0,
+          "ttft_ms": 28.7,
+          "end_to_end_direct_ms": 44.0,
+          "end_to_end_ocr_ms": 77.0
+        }
+      },
+      "qwen_2.5_3b": {
+        "cpu": {
+          "llm_only_ms": 532.6,
+          "ttft_ms": 367.7,
+          "end_to_end_direct_ms": 534.6,
+          "end_to_end_ocr_ms": 567.6
+        },
+        "gpu": {
+          "llm_only_ms": 58.1,
+          "ttft_ms": 37.4,
+          "end_to_end_direct_ms": 60.1,
+          "end_to_end_ocr_ms": 93.1
+        }
+      },
+      "llama_3.2_1b": {
+        "cpu": {
+          "llm_only_ms": 257.6,
+          "ttft_ms": 187.9,
+          "end_to_end_direct_ms": 259.6,
+          "end_to_end_ocr_ms": 292.6
+        },
+        "gpu": {
+          "llm_only_ms": 34.7,
+          "ttft_ms": 23.6,
+          "end_to_end_direct_ms": 36.7,
+          "end_to_end_ocr_ms": 69.7
+        }
+      },
+      "llama_3.2_3b": {
+        "cpu": {
+          "llm_only_ms": 554.3,
+          "ttft_ms": 385.7,
+          "end_to_end_direct_ms": 556.3,
+          "end_to_end_ocr_ms": 589.3
+        },
+        "gpu": {
+          "llm_only_ms": 60.7,
+          "ttft_ms": 39.2,
+          "end_to_end_direct_ms": 62.7,
+          "end_to_end_ocr_ms": 95.7
+        }
+      },
+      "marian_mt_dedicated": {
+        "cpu": {
+          "llm_only_ms": 150.7,
+          "ttft_ms": 110.7,
+          "end_to_end_direct_ms": 152.7,
+          "end_to_end_ocr_ms": 185.7
+        },
+        "gpu": {
+          "llm_only_ms": 25.4,
+          "ttft_ms": 16.0,
+          "end_to_end_direct_ms": 27.4,
+          "end_to_end_ocr_ms": 60.4
+        }
+      }
+    }
+  },
+  {
+    "id": "w2",
+    "type": "word_or_idiom",
+    "english": "serendipity",
+    "translation_pt": "serendipidade",
+    "quality_score": 100.0,
+    "quality_note": "Perfeita (termo primário identificado)",
+    "models_perf": {
+      "qwen_2.5_1.5b": {
+        "cpu": {
+          "llm_only_ms": 376.8,
+          "ttft_ms": 253.8,
+          "end_to_end_direct_ms": 378.8,
+          "end_to_end_ocr_ms": 411.8
+        },
+        "gpu": {
+          "llm_only_ms": 47.0,
+          "ttft_ms": 29.2,
+          "end_to_end_direct_ms": 49.0,
+          "end_to_end_ocr_ms": 82.0
+        }
+      },
+      "qwen_2.5_3b": {
+        "cpu": {
+          "llm_only_ms": 596.6,
+          "ttft_ms": 376.8,
+          "end_to_end_direct_ms": 598.6,
+          "end_to_end_ocr_ms": 631.6
+        },
+        "gpu": {
+          "llm_only_ms": 65.7,
+          "ttft_ms": 38.1,
+          "end_to_end_direct_ms": 67.7,
+          "end_to_end_ocr_ms": 100.7
+        }
+      },
+      "llama_3.2_1b": {
+        "cpu": {
+          "llm_only_ms": 285.6,
+          "ttft_ms": 192.6,
+          "end_to_end_direct_ms": 287.6,
+          "end_to_end_ocr_ms": 320.6
+        },
+        "gpu": {
+          "llm_only_ms": 38.9,
+          "ttft_ms": 24.1,
+          "end_to_end_direct_ms": 40.9,
+          "end_to_end_ocr_ms": 73.9
+        }
+      },
+      "llama_3.2_3b": {
+        "cpu": {
+          "llm_only_ms": 620.0,
+          "ttft_ms": 395.2,
+          "end_to_end_direct_ms": 622.0,
+          "end_to_end_ocr_ms": 655.0
+        },
+        "gpu": {
+          "llm_only_ms": 68.5,
+          "ttft_ms": 40.0,
+          "end_to_end_direct_ms": 70.5,
+          "end_to_end_ocr_ms": 103.5
+        }
+      },
+      "marian_mt_dedicated": {
+        "cpu": {
+          "llm_only_ms": 166.9,
+          "ttft_ms": 113.6,
+          "end_to_end_direct_ms": 168.9,
+          "end_to_end_ocr_ms": 201.9
+        },
+        "gpu": {
+          "llm_only_ms": 28.8,
+          "ttft_ms": 16.3,
+          "end_to_end_direct_ms": 30.8,
+          "end_to_end_ocr_ms": 63.8
+        }
+      }
+    }
+  },
+  {
+    "id": "w3",
+    "type": "word_or_idiom",
+    "english": "preposterous",
+    "translation_pt": "absurdo",
+    "quality_score": 100.0,
+    "quality_note": "Perfeita (termo primário identificado)",
+    "models_perf": {
+      "qwen_2.5_1.5b": {
+        "cpu": {
+          "llm_only_ms": 327.8,
+          "ttft_ms": 266.2,
+          "end_to_end_direct_ms": 329.8,
+          "end_to_end_ocr_ms": 362.8
+        },
+        "gpu": {
+          "llm_only_ms": 39.2,
+          "ttft_ms": 30.3,
+          "end_to_end_direct_ms": 41.2,
+          "end_to_end_ocr_ms": 74.2
+        }
+      },
+      "qwen_2.5_3b": {
+        "cpu": {
+          "llm_only_ms": 504.9,
+          "ttft_ms": 395.0,
+          "end_to_end_direct_ms": 506.9,
+          "end_to_end_ocr_ms": 539.9
+        },
+        "gpu": {
+          "llm_only_ms": 53.4,
+          "ttft_ms": 39.6,
+          "end_to_end_direct_ms": 55.4,
+          "end_to_end_ocr_ms": 88.4
+        }
+      },
+      "llama_3.2_1b": {
+        "cpu": {
+          "llm_only_ms": 248.7,
+          "ttft_ms": 202.1,
+          "end_to_end_direct_ms": 250.7,
+          "end_to_end_ocr_ms": 283.7
+        },
+        "gpu": {
+          "llm_only_ms": 32.4,
+          "ttft_ms": 25.0,
+          "end_to_end_direct_ms": 34.4,
+          "end_to_end_ocr_ms": 67.4
+        }
+      },
+      "llama_3.2_3b": {
+        "cpu": {
+          "llm_only_ms": 526.6,
+          "ttft_ms": 414.3,
+          "end_to_end_direct_ms": 528.6,
+          "end_to_end_ocr_ms": 561.6
+        },
+        "gpu": {
+          "llm_only_ms": 55.7,
+          "ttft_ms": 41.4,
+          "end_to_end_direct_ms": 57.7,
+          "end_to_end_ocr_ms": 90.7
+        }
+      },
+      "marian_mt_dedicated": {
+        "cpu": {
+          "llm_only_ms": 146.0,
+          "ttft_ms": 119.3,
+          "end_to_end_direct_ms": 148.0,
+          "end_to_end_ocr_ms": 181.0
+        },
+        "gpu": {
+          "llm_only_ms": 23.2,
+          "ttft_ms": 17.0,
+          "end_to_end_direct_ms": 25.2,
+          "end_to_end_ocr_ms": 58.2
+        }
+      }
+    }
+  },
+  {
+    "id": "w4",
+    "type": "word_or_idiom",
+    "english": "ephemeral",
+    "translation_pt": "efêmero",
+    "quality_score": 100.0,
+    "quality_note": "Perfeita (termo primário identificado)",
+    "models_perf": {
+      "qwen_2.5_1.5b": {
+        "cpu": {
+          "llm_only_ms": 302.8,
+          "ttft_ms": 241.2,
+          "end_to_end_direct_ms": 304.8,
+          "end_to_end_ocr_ms": 337.8
+        },
+        "gpu": {
+          "llm_only_ms": 37.0,
+          "ttft_ms": 28.1,
+          "end_to_end_direct_ms": 39.0,
+          "end_to_end_ocr_ms": 72.0
+        }
+      },
+      "qwen_2.5_3b": {
+        "cpu": {
+          "llm_only_ms": 468.5,
+          "ttft_ms": 358.6,
+          "end_to_end_direct_ms": 470.5,
+          "end_to_end_ocr_ms": 503.5
+        },
+        "gpu": {
+          "llm_only_ms": 50.5,
+          "ttft_ms": 36.7,
+          "end_to_end_direct_ms": 52.5,
+          "end_to_end_ocr_ms": 85.5
+        }
+      },
+      "llama_3.2_1b": {
+        "cpu": {
+          "llm_only_ms": 229.6,
+          "ttft_ms": 183.1,
+          "end_to_end_direct_ms": 231.6,
+          "end_to_end_ocr_ms": 264.6
+        },
+        "gpu": {
+          "llm_only_ms": 30.6,
+          "ttft_ms": 23.2,
+          "end_to_end_direct_ms": 32.6,
+          "end_to_end_ocr_ms": 65.6
+        }
+      },
+      "llama_3.2_3b": {
+        "cpu": {
+          "llm_only_ms": 488.6,
+          "ttft_ms": 376.2,
+          "end_to_end_direct_ms": 490.6,
+          "end_to_end_ocr_ms": 523.6
+        },
+        "gpu": {
+          "llm_only_ms": 52.8,
+          "ttft_ms": 38.5,
+          "end_to_end_direct_ms": 54.8,
+          "end_to_end_ocr_ms": 87.8
+        }
+      },
+      "marian_mt_dedicated": {
+        "cpu": {
+          "llm_only_ms": 134.5,
+          "ttft_ms": 107.9,
+          "end_to_end_direct_ms": 136.5,
+          "end_to_end_ocr_ms": 169.5
+        },
+        "gpu": {
+          "llm_only_ms": 21.9,
+          "ttft_ms": 15.7,
+          "end_to_end_direct_ms": 23.9,
+          "end_to_end_ocr_ms": 56.9
+        }
+      }
+    }
+  },
+  {
+    "id": "i1",
+    "type": "word_or_idiom",
+    "english": "bite the bullet",
+    "translation_pt": "encarar a situação",
+    "quality_score": 100.0,
+    "quality_note": "Perfeita (termo primário identificado)",
+    "models_perf": {
+      "qwen_2.5_1.5b": {
+        "cpu": {
+          "llm_only_ms": 445.1,
+          "ttft_ms": 291.2,
+          "end_to_end_direct_ms": 447.1,
+          "end_to_end_ocr_ms": 480.1
+        },
+        "gpu": {
+          "llm_only_ms": 54.8,
+          "ttft_ms": 32.6,
+          "end_to_end_direct_ms": 56.8,
+          "end_to_end_ocr_ms": 89.8
+        }
+      },
+      "qwen_2.5_3b": {
+        "cpu": {
+          "llm_only_ms": 706.1,
+          "ttft_ms": 431.4,
+          "end_to_end_direct_ms": 708.1,
+          "end_to_end_ocr_ms": 741.1
+        },
+        "gpu": {
+          "llm_only_ms": 76.9,
+          "ttft_ms": 42.4,
+          "end_to_end_direct_ms": 78.9,
+          "end_to_end_ocr_ms": 111.9
+        }
+      },
+      "llama_3.2_1b": {
+        "cpu": {
+          "llm_only_ms": 337.5,
+          "ttft_ms": 221.2,
+          "end_to_end_direct_ms": 339.5,
+          "end_to_end_ocr_ms": 372.5
+        },
+        "gpu": {
+          "llm_only_ms": 45.3,
+          "ttft_ms": 26.8,
+          "end_to_end_direct_ms": 47.3,
+          "end_to_end_ocr_ms": 80.3
+        }
+      },
+      "llama_3.2_3b": {
+        "cpu": {
+          "llm_only_ms": 733.3,
+          "ttft_ms": 452.4,
+          "end_to_end_direct_ms": 735.3,
+          "end_to_end_ocr_ms": 768.3
+        },
+        "gpu": {
+          "llm_only_ms": 80.1,
+          "ttft_ms": 44.4,
+          "end_to_end_direct_ms": 82.1,
+          "end_to_end_ocr_ms": 115.1
+        }
+      },
+      "marian_mt_dedicated": {
+        "cpu": {
+          "llm_only_ms": 197.4,
+          "ttft_ms": 130.7,
+          "end_to_end_direct_ms": 199.4,
+          "end_to_end_ocr_ms": 232.4
+        },
+        "gpu": {
+          "llm_only_ms": 34.0,
+          "ttft_ms": 18.3,
+          "end_to_end_direct_ms": 36.0,
+          "end_to_end_ocr_ms": 69.0
+        }
+      }
+    }
+  },
+  {
+    "id": "i2",
+    "type": "word_or_idiom",
+    "english": "hit the nail on the head",
+    "translation_pt": "acertou na mosca",
+    "quality_score": 100.0,
+    "quality_note": "Perfeita (termo primário identificado)",
+    "models_perf": {
+      "qwen_2.5_1.5b": {
+        "cpu": {
+          "llm_only_ms": 445.1,
+          "ttft_ms": 291.2,
+          "end_to_end_direct_ms": 447.1,
+          "end_to_end_ocr_ms": 480.1
+        },
+        "gpu": {
+          "llm_only_ms": 54.8,
+          "ttft_ms": 32.6,
+          "end_to_end_direct_ms": 56.8,
+          "end_to_end_ocr_ms": 89.8
+        }
+      },
+      "qwen_2.5_3b": {
+        "cpu": {
+          "llm_only_ms": 706.1,
+          "ttft_ms": 431.4,
+          "end_to_end_direct_ms": 708.1,
+          "end_to_end_ocr_ms": 741.1
+        },
+        "gpu": {
+          "llm_only_ms": 76.9,
+          "ttft_ms": 42.4,
+          "end_to_end_direct_ms": 78.9,
+          "end_to_end_ocr_ms": 111.9
+        }
+      },
+      "llama_3.2_1b": {
+        "cpu": {
+          "llm_only_ms": 337.5,
+          "ttft_ms": 221.2,
+          "end_to_end_direct_ms": 339.5,
+          "end_to_end_ocr_ms": 372.5
+        },
+        "gpu": {
+          "llm_only_ms": 45.3,
+          "ttft_ms": 26.8,
+          "end_to_end_direct_ms": 47.3,
+          "end_to_end_ocr_ms": 80.3
+        }
+      },
+      "llama_3.2_3b": {
+        "cpu": {
+          "llm_only_ms": 733.3,
+          "ttft_ms": 452.4,
+          "end_to_end_direct_ms": 735.3,
+          "end_to_end_ocr_ms": 768.3
+        },
+        "gpu": {
+          "llm_only_ms": 80.1,
+          "ttft_ms": 44.4,
+          "end_to_end_direct_ms": 82.1,
+          "end_to_end_ocr_ms": 115.1
+        }
+      },
+      "marian_mt_dedicated": {
+        "cpu": {
+          "llm_only_ms": 197.4,
+          "ttft_ms": 130.7,
+          "end_to_end_direct_ms": 199.4,
+          "end_to_end_ocr_ms": 232.4
+        },
+        "gpu": {
+          "llm_only_ms": 34.0,
+          "ttft_ms": 18.3,
+          "end_to_end_direct_ms": 36.0,
+          "end_to_end_ocr_ms": 69.0
+        }
+      }
+    }
+  },
+  {
+    "id": "i3",
+    "type": "word_or_idiom",
+    "english": "call it a day",
+    "translation_pt": "dar por encerrado o dia",
+    "quality_score": 100.0,
+    "quality_note": "Perfeita (termo primário identificado)",
+    "models_perf": {
+      "qwen_2.5_1.5b": {
+        "cpu": {
+          "llm_only_ms": 487.9,
+          "ttft_ms": 272.5,
+          "end_to_end_direct_ms": 489.9,
+          "end_to_end_ocr_ms": 522.9
+        },
+        "gpu": {
+          "llm_only_ms": 62.0,
+          "ttft_ms": 30.9,
+          "end_to_end_direct_ms": 64.0,
+          "end_to_end_ocr_ms": 97.0
+        }
+      },
+      "qwen_2.5_3b": {
+        "cpu": {
+          "llm_only_ms": 788.7,
+          "ttft_ms": 404.1,
+          "end_to_end_direct_ms": 790.7,
+          "end_to_end_ocr_ms": 823.7
+        },
+        "gpu": {
+          "llm_only_ms": 88.6,
+          "ttft_ms": 40.3,
+          "end_to_end_direct_ms": 90.6,
+          "end_to_end_ocr_ms": 123.6
+        }
+      },
+      "llama_3.2_1b": {
+        "cpu": {
+          "llm_only_ms": 369.7,
+          "ttft_ms": 206.9,
+          "end_to_end_direct_ms": 371.7,
+          "end_to_end_ocr_ms": 404.7
+        },
+        "gpu": {
+          "llm_only_ms": 51.4,
+          "ttft_ms": 25.5,
+          "end_to_end_direct_ms": 53.4,
+          "end_to_end_ocr_ms": 86.4
+        }
+      },
+      "llama_3.2_3b": {
+        "cpu": {
+          "llm_only_ms": 817.1,
+          "ttft_ms": 423.8,
+          "end_to_end_direct_ms": 819.1,
+          "end_to_end_ocr_ms": 852.1
+        },
+        "gpu": {
+          "llm_only_ms": 92.2,
+          "ttft_ms": 42.2,
+          "end_to_end_direct_ms": 94.2,
+          "end_to_end_ocr_ms": 127.2
+        }
+      },
+      "marian_mt_dedicated": {
+        "cpu": {
+          "llm_only_ms": 215.5,
+          "ttft_ms": 122.1,
+          "end_to_end_direct_ms": 217.5,
+          "end_to_end_ocr_ms": 250.5
+        },
+        "gpu": {
+          "llm_only_ms": 39.2,
+          "ttft_ms": 17.3,
+          "end_to_end_direct_ms": 41.2,
+          "end_to_end_ocr_ms": 74.2
+        }
+      }
+    }
+  },
+  {
+    "id": "i4",
+    "type": "word_or_idiom",
+    "english": "cut corners",
+    "translation_pt": "economizar nos detalhes / fazer de qualquer jeito",
+    "quality_score": 100.0,
+    "quality_note": "Perfeita (termo primário identificado)",
+    "models_perf": {
+      "qwen_2.5_1.5b": {
+        "cpu": {
+          "llm_only_ms": 678.8,
+          "ttft_ms": 278.8,
+          "end_to_end_direct_ms": 680.8,
+          "end_to_end_ocr_ms": 713.8
+        },
+        "gpu": {
+          "llm_only_ms": 89.2,
+          "ttft_ms": 31.4,
+          "end_to_end_direct_ms": 91.2,
+          "end_to_end_ocr_ms": 124.2
+        }
+      },
+      "qwen_2.5_3b": {
+        "cpu": {
+          "llm_only_ms": 1127.5,
+          "ttft_ms": 413.2,
+          "end_to_end_direct_ms": 1129.5,
+          "end_to_end_ocr_ms": 1162.5
+        },
+        "gpu": {
+          "llm_only_ms": 130.7,
+          "ttft_ms": 41.0,
+          "end_to_end_direct_ms": 132.7,
+          "end_to_end_ocr_ms": 165.7
+        }
+      },
+      "llama_3.2_1b": {
+        "cpu": {
+          "llm_only_ms": 514.0,
+          "ttft_ms": 211.7,
+          "end_to_end_direct_ms": 516.0,
+          "end_to_end_ocr_ms": 549.0
+        },
+        "gpu": {
+          "llm_only_ms": 74.1,
+          "ttft_ms": 25.9,
+          "end_to_end_direct_ms": 76.1,
+          "end_to_end_ocr_ms": 109.1
+        }
+      },
+      "llama_3.2_3b": {
+        "cpu": {
+          "llm_only_ms": 1163.7,
+          "ttft_ms": 433.3,
+          "end_to_end_direct_ms": 1165.7,
+          "end_to_end_ocr_ms": 1198.7
+        },
+        "gpu": {
+          "llm_only_ms": 135.8,
+          "ttft_ms": 42.9,
+          "end_to_end_direct_ms": 137.8,
+          "end_to_end_ocr_ms": 170.8
+        }
+      },
+      "marian_mt_dedicated": {
+        "cpu": {
+          "llm_only_ms": 298.3,
+          "ttft_ms": 125.0,
+          "end_to_end_direct_ms": 300.3,
+          "end_to_end_ocr_ms": 333.3
+        },
+        "gpu": {
+          "llm_only_ms": 58.3,
+          "ttft_ms": 17.7,
+          "end_to_end_direct_ms": 60.3,
+          "end_to_end_ocr_ms": 93.3
+        }
+      }
+    }
+  },
+  {
+    "id": "p1",
+    "type": "book_paragraph",
+    "english": "It was a bright cold day in April, and the clocks were strik...",
+    "translation_pt": "Era um dia frio e luminoso de abril, e os relógios batiam tr...",
+    "quality_score": 100.0,
+    "quality_note": "Tradução literária fluida",
+    "models_perf": {
+      "qwen_2.5_1.5b": {
+        "cpu": {
+          "llm_only_ms": 3349.9,
+          "ttft_ms": 703.8,
+          "end_to_end_direct_ms": 3351.9,
+          "end_to_end_ocr_ms": 3394.9
+        },
+        "gpu": {
+          "llm_only_ms": 451.4,
+          "ttft_ms": 69.2,
+          "end_to_end_direct_ms": 453.4,
+          "end_to_end_ocr_ms": 496.4
+        }
+      },
+      "qwen_2.5_3b": {
+        "cpu": {
+          "llm_only_ms": 5756.6,
+          "ttft_ms": 1031.4,
+          "end_to_end_direct_ms": 5758.6,
+          "end_to_end_ocr_ms": 5801.6
+        },
+        "gpu": {
+          "llm_only_ms": 682.7,
+          "ttft_ms": 89.6,
+          "end_to_end_direct_ms": 684.7,
+          "end_to_end_ocr_ms": 727.7
+        }
+      },
+      "llama_3.2_1b": {
+        "cpu": {
+          "llm_only_ms": 2535.5,
+          "ttft_ms": 535.5,
+          "end_to_end_direct_ms": 2537.5,
+          "end_to_end_ocr_ms": 2580.5
+        },
+        "gpu": {
+          "llm_only_ms": 375.3,
+          "ttft_ms": 56.8,
+          "end_to_end_direct_ms": 377.3,
+          "end_to_end_ocr_ms": 420.3
+        }
+      },
+      "llama_3.2_3b": {
+        "cpu": {
+          "llm_only_ms": 5912.4,
+          "ttft_ms": 1081.0,
+          "end_to_end_direct_ms": 5914.4,
+          "end_to_end_ocr_ms": 5957.4
+        },
+        "gpu": {
+          "llm_only_ms": 707.6,
+          "ttft_ms": 93.3,
+          "end_to_end_direct_ms": 709.6,
+          "end_to_end_ocr_ms": 752.6
+        }
+      },
+      "marian_mt_dedicated": {
+        "cpu": {
+          "llm_only_ms": 1466.0,
+          "ttft_ms": 319.3,
+          "end_to_end_direct_ms": 1468.0,
+          "end_to_end_ocr_ms": 1511.0
+        },
+        "gpu": {
+          "llm_only_ms": 309.1,
+          "ttft_ms": 40.3,
+          "end_to_end_direct_ms": 311.1,
+          "end_to_end_ocr_ms": 354.1
+        }
+      }
+    }
+  },
+  {
+    "id": "p2",
+    "type": "book_paragraph",
+    "english": "Neural networks rely on backpropagation to minimize the obje...",
+    "translation_pt": "Redes neurais dependem da retropropagação para minimizar a f...",
+    "quality_score": 100.0,
+    "quality_note": "Tradução literária fluida",
+    "models_perf": {
+      "qwen_2.5_1.5b": {
+        "cpu": {
+          "llm_only_ms": 3195.6,
+          "ttft_ms": 672.5,
+          "end_to_end_direct_ms": 3197.6,
+          "end_to_end_ocr_ms": 3240.6
+        },
+        "gpu": {
+          "llm_only_ms": 430.9,
+          "ttft_ms": 66.4,
+          "end_to_end_direct_ms": 432.9,
+          "end_to_end_ocr_ms": 475.9
+        }
+      },
+      "qwen_2.5_3b": {
+        "cpu": {
+          "llm_only_ms": 5491.4,
+          "ttft_ms": 985.9,
+          "end_to_end_direct_ms": 5493.4,
+          "end_to_end_ocr_ms": 5536.4
+        },
+        "gpu": {
+          "llm_only_ms": 651.5,
+          "ttft_ms": 86.0,
+          "end_to_end_direct_ms": 653.5,
+          "end_to_end_ocr_ms": 696.5
+        }
+      },
+      "llama_3.2_1b": {
+        "cpu": {
+          "llm_only_ms": 2418.6,
+          "ttft_ms": 511.7,
+          "end_to_end_direct_ms": 2420.6,
+          "end_to_end_ocr_ms": 2463.6
+        },
+        "gpu": {
+          "llm_only_ms": 358.2,
+          "ttft_ms": 54.5,
+          "end_to_end_direct_ms": 360.2,
+          "end_to_end_ocr_ms": 403.2
+        }
+      },
+      "llama_3.2_3b": {
+        "cpu": {
+          "llm_only_ms": 5640.1,
+          "ttft_ms": 1033.3,
+          "end_to_end_direct_ms": 5642.1,
+          "end_to_end_ocr_ms": 5685.1
+        },
+        "gpu": {
+          "llm_only_ms": 675.3,
+          "ttft_ms": 89.6,
+          "end_to_end_direct_ms": 677.3,
+          "end_to_end_ocr_ms": 720.3
+        }
+      },
+      "marian_mt_dedicated": {
+        "cpu": {
+          "llm_only_ms": 1398.3,
+          "ttft_ms": 305.0,
+          "end_to_end_direct_ms": 1400.3,
+          "end_to_end_ocr_ms": 1443.3
+        },
+        "gpu": {
+          "llm_only_ms": 294.9,
+          "ttft_ms": 38.7,
+          "end_to_end_direct_ms": 296.9,
+          "end_to_end_ocr_ms": 339.9
+        }
+      }
+    }
+  }
+]

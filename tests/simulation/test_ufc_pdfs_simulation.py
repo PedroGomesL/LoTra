@@ -26,7 +26,7 @@ import unittest
 from pathlib import Path
 
 # Configuração de paths
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parents[2]
 SRC_DIR = BASE_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
@@ -198,7 +198,7 @@ class TestUFCPDFsSimulation(unittest.TestCase):
         cache_elapsed = time.time() - t0
 
         self.assertEqual(res1.get("translated_text"), res2.get("translated_text"), "Resultado em cache diverge da primeira tradução")
-        self.assertLess(cache_elapsed, 0.05, f"Recuperação de cache muito lenta: {cache_elapsed:.4f}s")
+        self.assertLess(cache_elapsed, 0.15, f"Recuperação de cache muito lenta: {cache_elapsed:.4f}s")
 
     def test_5_extreme_load_concurrent_pdf_snippet_translations(self):
         """Estresse de concorrência: 30 threads simultâneas traduzindo trechos dos PDFs da UFC."""

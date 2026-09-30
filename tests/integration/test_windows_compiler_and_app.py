@@ -15,8 +15,8 @@ import time
 from pathlib import Path
 
 # Adiciona caminhos
-SRC_DIR = Path(__file__).resolve().parent.parent / "src"
-ROOT_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = Path(__file__).resolve().parents[2]
+SRC_DIR = ROOT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 if str(ROOT_DIR) not in sys.path:
@@ -346,6 +346,19 @@ def test_two_hotkey_commands_configuration():
     listener.on_ocr_snip()
     assert invoked == ["alt_q", "alt_w"]
     print("  [PASS] Configuração dos 2 comandos [Alt + Q] e [Alt + W] validada com sucesso!")
+
+import unittest
+
+class TestWindowsCompilerAndApp(unittest.TestCase):
+    def test_windows_compiler_and_app_suite(self):
+        test_resource_resolution()
+        test_clipboard_and_hud_readiness()
+        test_translation_engine_and_cache()
+        test_ocr_engine_robustness()
+        test_lotra_app_self_diagnosis()
+        test_text_spacing_normalization_and_hud_font()
+        test_100_percent_local_translation()
+        test_two_hotkey_commands_configuration()
 
 if __name__ == "__main__":
     test_resource_resolution()

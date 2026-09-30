@@ -36,9 +36,12 @@ import sqlite3
 from pathlib import Path
 
 # Adiciona o diretório src ao path para importação modular
-SRC_DIR = Path(__file__).resolve().parent.parent / "src"
+ROOT_DIR = Path(__file__).resolve().parents[2]
+SRC_DIR = ROOT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from platform_core import (
     get_app_data_dir,
@@ -518,6 +521,23 @@ def test_scanner_resilience_symlinks_and_errors():
             assert is_link_detected is True, "Junção/link deve ser identificado por os.lstat"
         print(f"  [OK] Scan completado em {elapsed*1000:.2f}ms com poda precoce de junções e tolerância a erros!")
 
+import unittest
+
+class TestSecurityPrivacyScanner(unittest.TestCase):
+    def test_security_privacy_scanner_suite(self):
+        test_strict_read_only_principle()
+        test_privacy_and_anti_leak_vault()
+        test_two_phase_incremental_scanning_and_move_detection()
+        test_checkpoint_persistence_and_interrupted_resume()
+        test_cooperative_cancellation_speed()
+        test_database_resilience_and_formal_migrations()
+        test_hardware_aware_and_vram_cleanup()
+        test_platform_path_canonicalization()
+        test_large_document_fingerprint_and_foreign_key_consistency()
+        test_batch_fast_discovery_and_modification_lifecycle()
+        test_pdf_native_pipeline_blank_detection_and_montage()
+        test_scanner_resilience_symlinks_and_errors()
+
 if __name__ == "__main__":
     test_strict_read_only_principle()
     test_privacy_and_anti_leak_vault()
@@ -532,5 +552,7 @@ if __name__ == "__main__":
     test_pdf_native_pipeline_blank_detection_and_montage()
     test_scanner_resilience_symlinks_and_errors()
     print("\n=================================================================")
+    print("TODOS OS TESTES DE SEGURANÇA, PRIVACIDADE E SCANNER PASSARAM!")
+    print("=================================================================")
     print("TODOS OS TESTES DE SEGURANÇA, PRIVACIDADE E SCANNER PASSARAM 100%!")
     print("=================================================================")

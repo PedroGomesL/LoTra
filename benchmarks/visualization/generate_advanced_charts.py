@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 BASE_DIR = os.path.dirname(__file__)
-RESULTS_PATH = os.path.join(BASE_DIR, "master_benchmark_results.json")
-OUTPUT_DIR = os.path.join(os.path.dirname(BASE_DIR), "docs", "images")
+RESULTS_PATH = os.path.abspath(os.path.join(BASE_DIR, "..", "results", "master_benchmark_results.json"))
+OUTPUT_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "..", "docs", "images"))
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
 

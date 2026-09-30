@@ -45,24 +45,24 @@ jobs:
       - name: Run Architecture & Resilient Vault Tests
         run: |
           if [ "${{ runner.os }}" = "Linux" ]; then
-            xvfb-run -a python tests/test_system_architecture.py
+            xvfb-run -a python tests/integration/test_system_architecture.py
           else
-            python tests/test_system_architecture.py
+            python tests/integration/test_system_architecture.py
           fi
         shell: bash
 
       - name: Run Security, Privacy & Scanner Tests
         run: |
           if [ "${{ runner.os }}" = "Linux" ]; then
-            xvfb-run -a python tests/test_security_privacy_scanner.py
+            xvfb-run -a python tests/integration/test_security_privacy_scanner.py
           else
-            python tests/test_security_privacy_scanner.py
+            python tests/integration/test_security_privacy_scanner.py
           fi
         shell: bash
 
       - name: Run Windows Compiler, OCR & App Integration Tests (Windows only)
         if: runner.os == 'Windows'
-        run: python tests/test_windows_compiler_and_app.py
+        run: python tests/integration/test_windows_compiler_and_app.py
 
   build-windows:
     name: Build Standalone Windows .exe
@@ -86,7 +86,7 @@ jobs:
 
       - name: Ensure assets
         run: |
-          python generate_icon.py
+          python scripts/generate_icon.py
 
       - name: Build executable with PyInstaller
         run: |

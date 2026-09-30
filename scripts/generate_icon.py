@@ -126,7 +126,7 @@ def render_lotra_logo(target_size: int = 512) -> Image.Image:
     return result
 
 def main():
-    root = Path(__file__).resolve().parent
+    root = Path(__file__).resolve().parent.parent
     assets_dir = root / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
 

@@ -12,7 +12,7 @@ import time
 import subprocess
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 DIST_DIR = BASE_DIR / "dist"
 BUILD_DIR = BASE_DIR / "build"
 ASSETS_DIR = BASE_DIR / "assets"
@@ -32,7 +32,7 @@ def ensure_assets():
     # 1. Ícone
     if not ICON_PATH.exists():
         print(f"  [INFO] Gerando ícone oficial em {ICON_PATH}...")
-        gen_script = BASE_DIR / "generate_icon.py"
+        gen_script = BASE_DIR / "scripts" / "generate_icon.py"
         if gen_script.exists():
             subprocess.run([sys.executable, str(gen_script)], check=True)
         else:

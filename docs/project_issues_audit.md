@@ -122,7 +122,7 @@ Todas as issues foram cadastradas oficialmente no repositório remoto [`PedroGom
 
 ### 2.8. Portabilidade da Especificação do PyInstaller ([Issue #8](https://github.com/PedroGomesL/LoTra/issues/8))
 - **Mecanismo Afetado**: [`LoTra.spec`](../LoTra.spec#L5-L38).
-- **Problema**: O arquivo `.spec` continha caminhos absolutos hardcoded da máquina local do desenvolvedor (`C:/Users/pedro/...`). Ao tentar compilar em outra máquina ou no runner do GitHub Actions (`D:\a\LoTra\LoTra`), o processo abortava com `FileNotFoundError`.
+- **Problema**: O arquivo `.spec` continha caminhos absolutos hardcoded da máquina local do desenvolvedor (`C:/Users/<user>/...`). Ao tentar compilar em outra máquina ou no runner do GitHub Actions (`D:\a\LoTra\LoTra`), o processo abortava com `FileNotFoundError`.
 - **Solução Recomendada**:
   Tornar o arquivo `.spec` dinâmico utilizando a variável nativa `SPECPATH`:
   ```python

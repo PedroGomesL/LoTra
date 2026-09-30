@@ -113,3 +113,20 @@ $RECYCLE.BIN/
 ._*
 .Spotlight-V100
 .Trashes
+
+# --- Arquivos Locais, Backups e Configurações de Usuário ---
+*.local
+*.bak
+*.orig
+*.swp
+*.swo
+*~
+*.user
+*.suo
+.env.local
+local_settings.*
+user_data/
+.history/
+scratch/
+test_vault.db*
+isolated_appdata/

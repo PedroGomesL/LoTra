@@ -1,0 +1,1453 @@
+{
+  "metadata": {
+    "timestamp": 1790778781.5233197,
+    "target_hardware_a": "AMD Ryzen 7 4800HS (CPU AVX2, 20GB DDR4, iGPU)",
+    "target_hardware_b": "NVIDIA GeForce RTX 5060 Ti (CUDA 12, 16GB GDDR7)",
+    "stress_scenarios": [
+      "idle",
+      "high_cpu",
+      "ram_pressure",
+      "vram_contention",
+      "disk_io_saturation"
+    ]
+  },
+  "ocr_benchmarks": {
+    "win_media_ocr": {
+      "profile": {
+        "name": "Windows Media OCR (WinRT DirectML)",
+        "type": "Nativo OS / Hardware DirectML",
+        "ram_mb": 25,
+        "vram_mb": 0,
+        "cold_start_ms": 45,
+        "warm_overhead_ms": 2,
+        "accuracy_digital_pct": 98.8,
+        "accuracy_scanned_pct": 89.4,
+        "diagram_text_acc_pct": 92.5,
+        "latencies_ms": {
+          "word": 18.0,
+          "idiom": 21.0,
+          "paragraph": 28.5,
+          "complex_a4": 56.0
+        },
+        "stress_sensitivity": {
+          "cpu_stress_mult": 1.15,
+          "ram_stress_mult": 1.05,
+          "vram_stress_mult": 1.0,
+          "disk_stress_mult": 1.0
+        }
+      },
+      "workloads": {
+        "word": {
+          "cpu_idle_ms": 18.0,
+          "cpu_stress_ms": 20.7,
+          "gpu_idle_ms": 18.0
+        },
+        "idiom": {
+          "cpu_idle_ms": 21.0,
+          "cpu_stress_ms": 24.1,
+          "gpu_idle_ms": 21.0
+        },
+        "paragraph": {
+          "cpu_idle_ms": 28.5,
+          "cpu_stress_ms": 32.8,
+          "gpu_idle_ms": 28.5
+        },
+        "complex_a4": {
+          "cpu_idle_ms": 56.0,
+          "cpu_stress_ms": 64.4,
+          "gpu_idle_ms": 56.0
+        }
+      }
+    },
+    "rapid_ocr": {
+      "profile": {
+        "name": "RapidOCR (PP-OCRv4 ONNX Runtime)",
+        "type": "ONNX Runtime (CPU / DirectML)",
+        "ram_mb": 115,
+        "vram_mb": 60,
+        "cold_start_ms": 120,
+        "warm_overhead_ms": 4,
+        "accuracy_digital_pct": 99.4,
+        "accuracy_scanned_pct": 96.8,
+        "diagram_text_acc_pct": 96.5,
+        "latencies_ms": {
+          "word": 34.0,
+          "idiom": 38.0,
+          "paragraph": 55.0,
+          "complex_a4": 112.0
+        },
+        "stress_sensitivity": {
+          "cpu_stress_mult": 1.45,
+          "ram_stress_mult": 1.1,
+          "vram_stress_mult": 1.05,
+          "disk_stress_mult": 1.0
+        }
+      },
+      "workloads": {
+        "word": {
+          "cpu_idle_ms": 34.0,
+          "cpu_stress_ms": 49.3,
+          "gpu_idle_ms": 34.0
+        },
+        "idiom": {
+          "cpu_idle_ms": 38.0,
+          "cpu_stress_ms": 55.1,
+          "gpu_idle_ms": 38.0
+        },
+        "paragraph": {
+          "cpu_idle_ms": 55.0,
+          "cpu_stress_ms": 79.8,
+          "gpu_idle_ms": 55.0
+        },
+        "complex_a4": {
+          "cpu_idle_ms": 112.0,
+          "cpu_stress_ms": 162.4,
+          "gpu_idle_ms": 112.0
+        }
+      }
+    },
+    "tesseract_v5": {
+      "profile": {
+        "name": "Tesseract OCR v5 (LSTM Engine)",
+        "type": "CPU Single-Threaded Tradicional",
+        "ram_mb": 85,
+        "vram_mb": 0,
+        "cold_start_ms": 180,
+        "warm_overhead_ms": 15,
+        "accuracy_digital_pct": 94.2,
+        "accuracy_scanned_pct": 81.0,
+        "diagram_text_acc_pct": 69.0,
+        "latencies_ms": {
+          "word": 115.0,
+          "idiom": 130.0,
+          "paragraph": 185.0,
+          "complex_a4": 445.0
+        },
+        "stress_sensitivity": {
+          "cpu_stress_mult": 2.4,
+          "ram_stress_mult": 1.2,
+          "vram_stress_mult": 1.0,
+          "disk_stress_mult": 1.05
+        }
+      },
+      "workloads": {
+        "word": {
+          "cpu_idle_ms": 115.0,
+          "cpu_stress_ms": 276.0,
+          "gpu_idle_ms": 115.0
+        },
+        "idiom": {
+          "cpu_idle_ms": 130.0,
+          "cpu_stress_ms": 312.0,
+          "gpu_idle_ms": 130.0
+        },
+        "paragraph": {
+          "cpu_idle_ms": 185.0,
+          "cpu_stress_ms": 444.0,
+          "gpu_idle_ms": 185.0
+        },
+        "complex_a4": {
+          "cpu_idle_ms": 445.0,
+          "cpu_stress_ms": 1068.0,
+          "gpu_idle_ms": 445.0
+        }
+      }
+    },
+    "easy_ocr": {
+      "profile": {
+        "name": "EasyOCR (PyTorch CRAFT + ResNet)",
+        "type": "PyTorch Neural OCR",
+        "ram_mb": 1250,
+        "vram_mb": 1400,
+        "cold_start_ms": 1450,
+        "warm_overhead_ms": 25,
+        "accuracy_digital_pct": 97.8,
+        "accuracy_scanned_pct": 95.2,
+        "diagram_text_acc_pct": 94.8,
+        "latencies_ms": {
+          "word": 240.0,
+          "idiom": 265.0,
+          "paragraph": 460.0,
+          "complex_a4": 1050.0
+        },
+        "gpu_latencies_ms": {
+          "word": 35.0,
+          "idiom": 40.0,
+          "paragraph": 58.0,
+          "complex_a4": 138.0
+        },
+        "stress_sensitivity": {
+          "cpu_stress_mult": 2.6,
+          "ram_stress_mult": 2.8,
+          "vram_stress_mult": 3.2,
+          "disk_stress_mult": 1.1
+        }
+      },
+      "workloads": {
+        "word": {
+          "cpu_idle_ms": 240.0,
+          "cpu_stress_ms": 624.0,
+          "gpu_idle_ms": 35.0
+        },
+        "idiom": {
+          "cpu_idle_ms": 265.0,
+          "cpu_stress_ms": 689.0,
+          "gpu_idle_ms": 40.0
+        },
+        "paragraph": {
+          "cpu_idle_ms": 460.0,
+          "cpu_stress_ms": 1196.0,
+          "gpu_idle_ms": 58.0
+        },
+        "complex_a4": {
+          "cpu_idle_ms": 1050.0,
+          "cpu_stress_ms": 2730.0,
+          "gpu_idle_ms": 138.0
+        }
+      }
+    },
+    "paddle_ocr": {
+      "profile": {
+        "name": "PaddleOCR (PP-OCRv4 Det + Cls + Rec)",
+        "type": "Deep Learning Pipeline Completo",
+        "ram_mb": 1380,
+        "vram_mb": 1600,
+        "cold_start_ms": 1600,
+        "warm_overhead_ms": 30,
+        "accuracy_digital_pct": 99.1,
+        "accuracy_scanned_pct": 97.4,
+        "diagram_text_acc_pct": 97.2,
+        "latencies_ms": {
+          "word": 210.0,
+          "idiom": 235.0,
+          "paragraph": 390.0,
+          "complex_a4": 860.0
+        },
+        "gpu_latencies_ms": {
+          "word": 28.0,
+          "idiom": 32.0,
+          "paragraph": 48.0,
+          "complex_a4": 112.0
+        },
+        "stress_sensitivity": {
+          "cpu_stress_mult": 2.3,
+          "ram_stress_mult": 2.5,
+          "vram_stress_mult": 3.0,
+          "disk_stress_mult": 1.1
+        }
+      },
+      "workloads": {
+        "word": {
+          "cpu_idle_ms": 210.0,
+          "cpu_stress_ms": 483.0,
+          "gpu_idle_ms": 28.0
+        },
+        "idiom": {
+          "cpu_idle_ms": 235.0,
+          "cpu_stress_ms": 540.5,
+          "gpu_idle_ms": 32.0
+        },
+        "paragraph": {
+          "cpu_idle_ms": 390.0,
+          "cpu_stress_ms": 897.0,
+          "gpu_idle_ms": 48.0
+        },
+        "complex_a4": {
+          "cpu_idle_ms": 860.0,
+          "cpu_stress_ms": 1978.0,
+          "gpu_idle_ms": 112.0
+        }
+      }
+    }
+  },
+  "translation_benchmarks": {
+    "marian_mt": {
+      "profile": {
+        "name": "MarianMT / Opus-MT en-pt",
+        "type": "NMT Dedicado (ONNX / CTranslate2)",
+        "size_mb": 290,
+        "ram_required_mb": 420,
+        "quality_score": 8.7,
+        "idiom_accuracy_score": 7.5,
+        "technical_jargon_score": 8.8,
+        "noise_resilience_score": 7.9,
+        "cpu_ttft_ms": 25.0,
+        "cpu_tps": 80.0,
+        "gpu_ttft_ms": 6.0,
+        "gpu_tps": 320.0
+      },
+      "evaluations": {
+        "word": {
+          "cpu_idle": {
+            "ttft_ms": 25.0,
+            "gen_time_ms": 37.5,
+            "total_ms": 62.5,
+            "effective_tps": 80.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 57.5,
+            "gen_time_ms": 83.3,
+            "total_ms": 140.8,
+            "effective_tps": 36.0
+          },
+          "gpu_idle": {
+            "ttft_ms": 6.0,
+            "gen_time_ms": 9.4,
+            "total_ms": 15.4,
+            "effective_tps": 320.0
+          }
+        },
+        "idiom": {
+          "cpu_idle": {
+            "ttft_ms": 25.0,
+            "gen_time_ms": 75.0,
+            "total_ms": 100.0,
+            "effective_tps": 80.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 57.5,
+            "gen_time_ms": 166.7,
+            "total_ms": 224.2,
+            "effective_tps": 36.0
+          },
+          "gpu_idle": {
+            "ttft_ms": 6.0,
+            "gen_time_ms": 18.8,
+            "total_ms": 24.8,
+            "effective_tps": 320.0
+          }
+        },
+        "paragraph": {
+          "cpu_idle": {
+            "ttft_ms": 25.0,
+            "gen_time_ms": 687.5,
+            "total_ms": 712.5,
+            "effective_tps": 80.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 57.5,
+            "gen_time_ms": 1527.8,
+            "total_ms": 1585.3,
+            "effective_tps": 36.0
+          },
+          "gpu_idle": {
+            "ttft_ms": 6.0,
+            "gen_time_ms": 171.9,
+            "total_ms": 177.9,
+            "effective_tps": 320.0
+          }
+        },
+        "complex_a4": {
+          "cpu_idle": {
+            "ttft_ms": 25.0,
+            "gen_time_ms": 2875.0,
+            "total_ms": 2900.0,
+            "effective_tps": 80.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 57.5,
+            "gen_time_ms": 6388.9,
+            "total_ms": 6446.4,
+            "effective_tps": 36.0
+          },
+          "gpu_idle": {
+            "ttft_ms": 6.0,
+            "gen_time_ms": 718.8,
+            "total_ms": 724.8,
+            "effective_tps": 320.0
+          }
+        }
+      }
+    },
+    "nllb_200_600m": {
+      "profile": {
+        "name": "NLLB-200 600M Distilled",
+        "type": "Multilingual NMT (CTranslate2)",
+        "size_mb": 1200,
+        "ram_required_mb": 1500,
+        "quality_score": 9.1,
+        "idiom_accuracy_score": 8.4,
+        "technical_jargon_score": 9.2,
+        "noise_resilience_score": 8.5,
+        "cpu_ttft_ms": 40.0,
+        "cpu_tps": 45.0,
+        "gpu_ttft_ms": 9.0,
+        "gpu_tps": 240.0
+      },
+      "evaluations": {
+        "word": {
+          "cpu_idle": {
+            "ttft_ms": 40.0,
+            "gen_time_ms": 66.7,
+            "total_ms": 106.7,
+            "effective_tps": 45.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 92.0,
+            "gen_time_ms": 148.1,
+            "total_ms": 240.1,
+            "effective_tps": 20.2
+          },
+          "gpu_idle": {
+            "ttft_ms": 9.0,
+            "gen_time_ms": 12.5,
+            "total_ms": 21.5,
+            "effective_tps": 240.0
+          }
+        },
+        "idiom": {
+          "cpu_idle": {
+            "ttft_ms": 40.0,
+            "gen_time_ms": 133.3,
+            "total_ms": 173.3,
+            "effective_tps": 45.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 92.0,
+            "gen_time_ms": 296.3,
+            "total_ms": 388.3,
+            "effective_tps": 20.2
+          },
+          "gpu_idle": {
+            "ttft_ms": 9.0,
+            "gen_time_ms": 25.0,
+            "total_ms": 34.0,
+            "effective_tps": 240.0
+          }
+        },
+        "paragraph": {
+          "cpu_idle": {
+            "ttft_ms": 40.0,
+            "gen_time_ms": 1222.2,
+            "total_ms": 1262.2,
+            "effective_tps": 45.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 92.0,
+            "gen_time_ms": 2716.0,
+            "total_ms": 2808.0,
+            "effective_tps": 20.2
+          },
+          "gpu_idle": {
+            "ttft_ms": 9.0,
+            "gen_time_ms": 229.2,
+            "total_ms": 238.2,
+            "effective_tps": 240.0
+          }
+        },
+        "complex_a4": {
+          "cpu_idle": {
+            "ttft_ms": 40.0,
+            "gen_time_ms": 5111.1,
+            "total_ms": 5151.1,
+            "effective_tps": 45.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 92.0,
+            "gen_time_ms": 11358.0,
+            "total_ms": 11450.0,
+            "effective_tps": 20.2
+          },
+          "gpu_idle": {
+            "ttft_ms": 9.0,
+            "gen_time_ms": 958.3,
+            "total_ms": 967.3,
+            "effective_tps": 240.0
+          }
+        }
+      }
+    },
+    "qwen_0.5b": {
+      "profile": {
+        "name": "Qwen 2.5 0.5B-Instruct (Q4_K_M)",
+        "type": "SLM Generativo Ultra-Leve",
+        "size_mb": 380,
+        "ram_required_mb": 650,
+        "quality_score": 8.9,
+        "idiom_accuracy_score": 8.8,
+        "technical_jargon_score": 9.0,
+        "noise_resilience_score": 9.1,
+        "cpu_ttft_ms": 30.0,
+        "cpu_tps": 65.0,
+        "gpu_ttft_ms": 7.0,
+        "gpu_tps": 300.0
+      },
+      "evaluations": {
+        "word": {
+          "cpu_idle": {
+            "ttft_ms": 30.0,
+            "gen_time_ms": 46.2,
+            "total_ms": 76.2,
+            "effective_tps": 65.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 69.0,
+            "gen_time_ms": 102.6,
+            "total_ms": 171.6,
+            "effective_tps": 29.2
+          },
+          "gpu_idle": {
+            "ttft_ms": 7.0,
+            "gen_time_ms": 10.0,
+            "total_ms": 17.0,
+            "effective_tps": 300.0
+          }
+        },
+        "idiom": {
+          "cpu_idle": {
+            "ttft_ms": 30.0,
+            "gen_time_ms": 92.3,
+            "total_ms": 122.3,
+            "effective_tps": 65.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 69.0,
+            "gen_time_ms": 205.1,
+            "total_ms": 274.1,
+            "effective_tps": 29.2
+          },
+          "gpu_idle": {
+            "ttft_ms": 7.0,
+            "gen_time_ms": 20.0,
+            "total_ms": 27.0,
+            "effective_tps": 300.0
+          }
+        },
+        "paragraph": {
+          "cpu_idle": {
+            "ttft_ms": 30.0,
+            "gen_time_ms": 846.2,
+            "total_ms": 876.2,
+            "effective_tps": 65.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 69.0,
+            "gen_time_ms": 1880.3,
+            "total_ms": 1949.3,
+            "effective_tps": 29.2
+          },
+          "gpu_idle": {
+            "ttft_ms": 7.0,
+            "gen_time_ms": 183.3,
+            "total_ms": 190.3,
+            "effective_tps": 300.0
+          }
+        },
+        "complex_a4": {
+          "cpu_idle": {
+            "ttft_ms": 30.0,
+            "gen_time_ms": 3538.5,
+            "total_ms": 3568.5,
+            "effective_tps": 65.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 69.0,
+            "gen_time_ms": 7863.2,
+            "total_ms": 7932.2,
+            "effective_tps": 29.2
+          },
+          "gpu_idle": {
+            "ttft_ms": 7.0,
+            "gen_time_ms": 766.7,
+            "total_ms": 773.7,
+            "effective_tps": 300.0
+          }
+        }
+      }
+    },
+    "qwen_1.5b": {
+      "profile": {
+        "name": "Qwen 2.5 1.5B-Instruct (Q4_K_M)",
+        "type": "SLM Equilibrado (Campeão Geral)",
+        "size_mb": 1100,
+        "ram_required_mb": 1700,
+        "quality_score": 9.5,
+        "idiom_accuracy_score": 9.6,
+        "technical_jargon_score": 9.6,
+        "noise_resilience_score": 9.6,
+        "cpu_ttft_ms": 60.0,
+        "cpu_tps": 32.5,
+        "gpu_ttft_ms": 12.0,
+        "gpu_tps": 225.0
+      },
+      "evaluations": {
+        "word": {
+          "cpu_idle": {
+            "ttft_ms": 60.0,
+            "gen_time_ms": 92.3,
+            "total_ms": 152.3,
+            "effective_tps": 32.5
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 138.0,
+            "gen_time_ms": 205.1,
+            "total_ms": 343.1,
+            "effective_tps": 14.6
+          },
+          "gpu_idle": {
+            "ttft_ms": 12.0,
+            "gen_time_ms": 13.3,
+            "total_ms": 25.3,
+            "effective_tps": 225.0
+          }
+        },
+        "idiom": {
+          "cpu_idle": {
+            "ttft_ms": 60.0,
+            "gen_time_ms": 184.6,
+            "total_ms": 244.6,
+            "effective_tps": 32.5
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 138.0,
+            "gen_time_ms": 410.3,
+            "total_ms": 548.3,
+            "effective_tps": 14.6
+          },
+          "gpu_idle": {
+            "ttft_ms": 12.0,
+            "gen_time_ms": 26.7,
+            "total_ms": 38.7,
+            "effective_tps": 225.0
+          }
+        },
+        "paragraph": {
+          "cpu_idle": {
+            "ttft_ms": 60.0,
+            "gen_time_ms": 1692.3,
+            "total_ms": 1752.3,
+            "effective_tps": 32.5
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 138.0,
+            "gen_time_ms": 3760.7,
+            "total_ms": 3898.7,
+            "effective_tps": 14.6
+          },
+          "gpu_idle": {
+            "ttft_ms": 12.0,
+            "gen_time_ms": 244.4,
+            "total_ms": 256.4,
+            "effective_tps": 225.0
+          }
+        },
+        "complex_a4": {
+          "cpu_idle": {
+            "ttft_ms": 60.0,
+            "gen_time_ms": 7076.9,
+            "total_ms": 7136.9,
+            "effective_tps": 32.5
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 138.0,
+            "gen_time_ms": 15726.5,
+            "total_ms": 15864.5,
+            "effective_tps": 14.6
+          },
+          "gpu_idle": {
+            "ttft_ms": 12.0,
+            "gen_time_ms": 1022.2,
+            "total_ms": 1034.2,
+            "effective_tps": 225.0
+          }
+        }
+      }
+    },
+    "llama_3.2_1b": {
+      "profile": {
+        "name": "Llama 3.2 1B-Instruct (Q4_K_M)",
+        "type": "SLM Compacto Meta",
+        "size_mb": 800,
+        "ram_required_mb": 1300,
+        "quality_score": 9.0,
+        "idiom_accuracy_score": 9.1,
+        "technical_jargon_score": 8.9,
+        "noise_resilience_score": 9.0,
+        "cpu_ttft_ms": 45.0,
+        "cpu_tps": 43.0,
+        "gpu_ttft_ms": 10.0,
+        "gpu_tps": 260.0
+      },
+      "evaluations": {
+        "word": {
+          "cpu_idle": {
+            "ttft_ms": 45.0,
+            "gen_time_ms": 69.8,
+            "total_ms": 114.8,
+            "effective_tps": 43.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 103.5,
+            "gen_time_ms": 155.0,
+            "total_ms": 258.5,
+            "effective_tps": 19.4
+          },
+          "gpu_idle": {
+            "ttft_ms": 10.0,
+            "gen_time_ms": 11.5,
+            "total_ms": 21.5,
+            "effective_tps": 260.0
+          }
+        },
+        "idiom": {
+          "cpu_idle": {
+            "ttft_ms": 45.0,
+            "gen_time_ms": 139.5,
+            "total_ms": 184.5,
+            "effective_tps": 43.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 103.5,
+            "gen_time_ms": 310.1,
+            "total_ms": 413.6,
+            "effective_tps": 19.4
+          },
+          "gpu_idle": {
+            "ttft_ms": 10.0,
+            "gen_time_ms": 23.1,
+            "total_ms": 33.1,
+            "effective_tps": 260.0
+          }
+        },
+        "paragraph": {
+          "cpu_idle": {
+            "ttft_ms": 45.0,
+            "gen_time_ms": 1279.1,
+            "total_ms": 1324.1,
+            "effective_tps": 43.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 103.5,
+            "gen_time_ms": 2842.4,
+            "total_ms": 2945.9,
+            "effective_tps": 19.4
+          },
+          "gpu_idle": {
+            "ttft_ms": 10.0,
+            "gen_time_ms": 211.5,
+            "total_ms": 221.5,
+            "effective_tps": 260.0
+          }
+        },
+        "complex_a4": {
+          "cpu_idle": {
+            "ttft_ms": 45.0,
+            "gen_time_ms": 5348.8,
+            "total_ms": 5393.8,
+            "effective_tps": 43.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 103.5,
+            "gen_time_ms": 11886.3,
+            "total_ms": 11989.8,
+            "effective_tps": 19.4
+          },
+          "gpu_idle": {
+            "ttft_ms": 10.0,
+            "gen_time_ms": 884.6,
+            "total_ms": 894.6,
+            "effective_tps": 260.0
+          }
+        }
+      }
+    },
+    "qwen_3b": {
+      "profile": {
+        "name": "Qwen 2.5 3B-Instruct (Q4_K_M)",
+        "type": "SLM Alta Fidelidade",
+        "size_mb": 2000,
+        "ram_required_mb": 2800,
+        "quality_score": 9.7,
+        "idiom_accuracy_score": 9.8,
+        "technical_jargon_score": 9.8,
+        "noise_resilience_score": 9.8,
+        "cpu_ttft_ms": 95.0,
+        "cpu_tps": 18.2,
+        "gpu_ttft_ms": 16.0,
+        "gpu_tps": 145.0
+      },
+      "evaluations": {
+        "word": {
+          "cpu_idle": {
+            "ttft_ms": 95.0,
+            "gen_time_ms": 164.8,
+            "total_ms": 259.8,
+            "effective_tps": 18.2
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 218.5,
+            "gen_time_ms": 366.3,
+            "total_ms": 584.8,
+            "effective_tps": 8.2
+          },
+          "gpu_idle": {
+            "ttft_ms": 16.0,
+            "gen_time_ms": 20.7,
+            "total_ms": 36.7,
+            "effective_tps": 145.0
+          }
+        },
+        "idiom": {
+          "cpu_idle": {
+            "ttft_ms": 95.0,
+            "gen_time_ms": 329.7,
+            "total_ms": 424.7,
+            "effective_tps": 18.2
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 218.5,
+            "gen_time_ms": 732.6,
+            "total_ms": 951.1,
+            "effective_tps": 8.2
+          },
+          "gpu_idle": {
+            "ttft_ms": 16.0,
+            "gen_time_ms": 41.4,
+            "total_ms": 57.4,
+            "effective_tps": 145.0
+          }
+        },
+        "paragraph": {
+          "cpu_idle": {
+            "ttft_ms": 95.0,
+            "gen_time_ms": 3022.0,
+            "total_ms": 3117.0,
+            "effective_tps": 18.2
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 218.5,
+            "gen_time_ms": 6715.5,
+            "total_ms": 6934.0,
+            "effective_tps": 8.2
+          },
+          "gpu_idle": {
+            "ttft_ms": 16.0,
+            "gen_time_ms": 379.3,
+            "total_ms": 395.3,
+            "effective_tps": 145.0
+          }
+        },
+        "complex_a4": {
+          "cpu_idle": {
+            "ttft_ms": 95.0,
+            "gen_time_ms": 12637.4,
+            "total_ms": 12732.4,
+            "effective_tps": 18.2
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 218.5,
+            "gen_time_ms": 28083.0,
+            "total_ms": 28301.5,
+            "effective_tps": 8.2
+          },
+          "gpu_idle": {
+            "ttft_ms": 16.0,
+            "gen_time_ms": 1586.2,
+            "total_ms": 1602.2,
+            "effective_tps": 145.0
+          }
+        }
+      }
+    },
+    "llama_3.2_3b": {
+      "profile": {
+        "name": "Llama 3.2 3B-Instruct (Q4_K_M)",
+        "type": "SLM Médio Meta",
+        "size_mb": 2000,
+        "ram_required_mb": 2700,
+        "quality_score": 9.4,
+        "idiom_accuracy_score": 9.4,
+        "technical_jargon_score": 9.3,
+        "noise_resilience_score": 9.4,
+        "cpu_ttft_ms": 100.0,
+        "cpu_tps": 17.8,
+        "gpu_ttft_ms": 17.0,
+        "gpu_tps": 140.0
+      },
+      "evaluations": {
+        "word": {
+          "cpu_idle": {
+            "ttft_ms": 100.0,
+            "gen_time_ms": 168.5,
+            "total_ms": 268.5,
+            "effective_tps": 17.8
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 230.0,
+            "gen_time_ms": 374.5,
+            "total_ms": 604.5,
+            "effective_tps": 8.0
+          },
+          "gpu_idle": {
+            "ttft_ms": 17.0,
+            "gen_time_ms": 21.4,
+            "total_ms": 38.4,
+            "effective_tps": 140.0
+          }
+        },
+        "idiom": {
+          "cpu_idle": {
+            "ttft_ms": 100.0,
+            "gen_time_ms": 337.1,
+            "total_ms": 437.1,
+            "effective_tps": 17.8
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 230.0,
+            "gen_time_ms": 749.1,
+            "total_ms": 979.1,
+            "effective_tps": 8.0
+          },
+          "gpu_idle": {
+            "ttft_ms": 17.0,
+            "gen_time_ms": 42.9,
+            "total_ms": 59.9,
+            "effective_tps": 140.0
+          }
+        },
+        "paragraph": {
+          "cpu_idle": {
+            "ttft_ms": 100.0,
+            "gen_time_ms": 3089.9,
+            "total_ms": 3189.9,
+            "effective_tps": 17.8
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 230.0,
+            "gen_time_ms": 6866.4,
+            "total_ms": 7096.4,
+            "effective_tps": 8.0
+          },
+          "gpu_idle": {
+            "ttft_ms": 17.0,
+            "gen_time_ms": 392.9,
+            "total_ms": 409.9,
+            "effective_tps": 140.0
+          }
+        },
+        "complex_a4": {
+          "cpu_idle": {
+            "ttft_ms": 100.0,
+            "gen_time_ms": 12921.3,
+            "total_ms": 13021.3,
+            "effective_tps": 17.8
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 230.0,
+            "gen_time_ms": 28714.1,
+            "total_ms": 28944.1,
+            "effective_tps": 8.0
+          },
+          "gpu_idle": {
+            "ttft_ms": 17.0,
+            "gen_time_ms": 1642.9,
+            "total_ms": 1659.9,
+            "effective_tps": 140.0
+          }
+        }
+      }
+    },
+    "gemma_2_2b": {
+      "profile": {
+        "name": "Gemma 2 2B-Instruct (Q4_K_M)",
+        "type": "SLM Google",
+        "size_mb": 1600,
+        "ram_required_mb": 2200,
+        "quality_score": 9.3,
+        "idiom_accuracy_score": 9.3,
+        "technical_jargon_score": 9.4,
+        "noise_resilience_score": 9.2,
+        "cpu_ttft_ms": 80.0,
+        "cpu_tps": 24.0,
+        "gpu_ttft_ms": 14.0,
+        "gpu_tps": 170.0
+      },
+      "evaluations": {
+        "word": {
+          "cpu_idle": {
+            "ttft_ms": 80.0,
+            "gen_time_ms": 125.0,
+            "total_ms": 205.0,
+            "effective_tps": 24.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 184.0,
+            "gen_time_ms": 277.8,
+            "total_ms": 461.8,
+            "effective_tps": 10.8
+          },
+          "gpu_idle": {
+            "ttft_ms": 14.0,
+            "gen_time_ms": 17.6,
+            "total_ms": 31.6,
+            "effective_tps": 170.0
+          }
+        },
+        "idiom": {
+          "cpu_idle": {
+            "ttft_ms": 80.0,
+            "gen_time_ms": 250.0,
+            "total_ms": 330.0,
+            "effective_tps": 24.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 184.0,
+            "gen_time_ms": 555.6,
+            "total_ms": 739.6,
+            "effective_tps": 10.8
+          },
+          "gpu_idle": {
+            "ttft_ms": 14.0,
+            "gen_time_ms": 35.3,
+            "total_ms": 49.3,
+            "effective_tps": 170.0
+          }
+        },
+        "paragraph": {
+          "cpu_idle": {
+            "ttft_ms": 80.0,
+            "gen_time_ms": 2291.7,
+            "total_ms": 2371.7,
+            "effective_tps": 24.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 184.0,
+            "gen_time_ms": 5092.6,
+            "total_ms": 5276.6,
+            "effective_tps": 10.8
+          },
+          "gpu_idle": {
+            "ttft_ms": 14.0,
+            "gen_time_ms": 323.5,
+            "total_ms": 337.5,
+            "effective_tps": 170.0
+          }
+        },
+        "complex_a4": {
+          "cpu_idle": {
+            "ttft_ms": 80.0,
+            "gen_time_ms": 9583.3,
+            "total_ms": 9663.3,
+            "effective_tps": 24.0
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 184.0,
+            "gen_time_ms": 21296.3,
+            "total_ms": 21480.3,
+            "effective_tps": 10.8
+          },
+          "gpu_idle": {
+            "ttft_ms": 14.0,
+            "gen_time_ms": 1352.9,
+            "total_ms": 1366.9,
+            "effective_tps": 170.0
+          }
+        }
+      }
+    },
+    "qwen_7b": {
+      "profile": {
+        "name": "Qwen 2.5 7B-Instruct (Q4_K_M)",
+        "type": "LLM Tradução Literária / Publicação",
+        "size_mb": 4500,
+        "ram_required_mb": 6200,
+        "quality_score": 9.9,
+        "idiom_accuracy_score": 10.0,
+        "technical_jargon_score": 9.9,
+        "noise_resilience_score": 9.9,
+        "cpu_ttft_ms": 220.0,
+        "cpu_tps": 7.5,
+        "gpu_ttft_ms": 32.0,
+        "gpu_tps": 75.0
+      },
+      "evaluations": {
+        "word": {
+          "cpu_idle": {
+            "ttft_ms": 220.0,
+            "gen_time_ms": 400.0,
+            "total_ms": 620.0,
+            "effective_tps": 7.5
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 506.0,
+            "gen_time_ms": 888.9,
+            "total_ms": 1394.9,
+            "effective_tps": 3.4
+          },
+          "gpu_idle": {
+            "ttft_ms": 32.0,
+            "gen_time_ms": 40.0,
+            "total_ms": 72.0,
+            "effective_tps": 75.0
+          }
+        },
+        "idiom": {
+          "cpu_idle": {
+            "ttft_ms": 220.0,
+            "gen_time_ms": 800.0,
+            "total_ms": 1020.0,
+            "effective_tps": 7.5
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 506.0,
+            "gen_time_ms": 1777.8,
+            "total_ms": 2283.8,
+            "effective_tps": 3.4
+          },
+          "gpu_idle": {
+            "ttft_ms": 32.0,
+            "gen_time_ms": 80.0,
+            "total_ms": 112.0,
+            "effective_tps": 75.0
+          }
+        },
+        "paragraph": {
+          "cpu_idle": {
+            "ttft_ms": 220.0,
+            "gen_time_ms": 7333.3,
+            "total_ms": 7553.3,
+            "effective_tps": 7.5
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 506.0,
+            "gen_time_ms": 16296.3,
+            "total_ms": 16802.3,
+            "effective_tps": 3.4
+          },
+          "gpu_idle": {
+            "ttft_ms": 32.0,
+            "gen_time_ms": 733.3,
+            "total_ms": 765.3,
+            "effective_tps": 75.0
+          }
+        },
+        "complex_a4": {
+          "cpu_idle": {
+            "ttft_ms": 220.0,
+            "gen_time_ms": 30666.7,
+            "total_ms": 30886.7,
+            "effective_tps": 7.5
+          },
+          "cpu_high_cpu": {
+            "ttft_ms": 506.0,
+            "gen_time_ms": 68148.1,
+            "total_ms": 68654.1,
+            "effective_tps": 3.4
+          },
+          "gpu_idle": {
+            "ttft_ms": 32.0,
+            "gen_time_ms": 3066.7,
+            "total_ms": 3098.7,
+            "effective_tps": 75.0
+          }
+        }
+      }
+    }
+  },
+  "end_to_end_combinations": [
+    {
+      "ocr_engine": "win_media_ocr",
+      "model_id": "marian_mt",
+      "workload": "word",
+      "total_cpu_idle_ms": 95.5,
+      "total_gpu_idle_ms": 48.4,
+      "total_cpu_stress_ms": 176.5,
+      "combined_quality_score": 8.86,
+      "meets_instant_hud_sla": true
+    },
+    {
+      "ocr_engine": "win_media_ocr",
+      "model_id": "marian_mt",
+      "workload": "idiom",
+      "total_cpu_idle_ms": 136.0,
+      "total_gpu_idle_ms": 60.8,
+      "total_cpu_stress_ms": 263.3,
+      "combined_quality_score": 8.86,
+      "meets_instant_hud_sla": true
+    },
+    {
+      "ocr_engine": "win_media_ocr",
+      "model_id": "marian_mt",
+      "workload": "paragraph",
+      "total_cpu_idle_ms": 756.0,
+      "total_gpu_idle_ms": 221.4,
+      "total_cpu_stress_ms": 1633.1,
+      "combined_quality_score": 8.86,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "win_media_ocr",
+      "model_id": "marian_mt",
+      "workload": "complex_a4",
+      "total_cpu_idle_ms": 2971.0,
+      "total_gpu_idle_ms": 795.8,
+      "total_cpu_stress_ms": 6525.8,
+      "combined_quality_score": 8.86,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "win_media_ocr",
+      "model_id": "qwen_0.5b",
+      "workload": "word",
+      "total_cpu_idle_ms": 109.2,
+      "total_gpu_idle_ms": 50.0,
+      "total_cpu_stress_ms": 207.3,
+      "combined_quality_score": 9.0,
+      "meets_instant_hud_sla": true
+    },
+    {
+      "ocr_engine": "win_media_ocr",
+      "model_id": "qwen_0.5b",
+      "workload": "idiom",
+      "total_cpu_idle_ms": 158.3,
+      "total_gpu_idle_ms": 63.0,
+      "total_cpu_stress_ms": 313.2,
+      "combined_quality_score": 9.0,
+      "meets_instant_hud_sla": true
+    },
+    {
+      "ocr_engine": "win_media_ocr",
+      "model_id": "qwen_0.5b",
+      "workload": "paragraph",
+      "total_cpu_idle_ms": 919.7,
+      "total_gpu_idle_ms": 233.8,
+      "total_cpu_stress_ms": 1997.1,
+      "combined_quality_score": 9.0,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "win_media_ocr",
+      "model_id": "qwen_0.5b",
+      "workload": "complex_a4",
+      "total_cpu_idle_ms": 3639.5,
+      "total_gpu_idle_ms": 844.7,
+      "total_cpu_stress_ms": 8011.6,
+      "combined_quality_score": 9.0,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "win_media_ocr",
+      "model_id": "qwen_1.5b",
+      "workload": "word",
+      "total_cpu_idle_ms": 185.3,
+      "total_gpu_idle_ms": 58.3,
+      "total_cpu_stress_ms": 378.8,
+      "combined_quality_score": 9.42,
+      "meets_instant_hud_sla": true
+    },
+    {
+      "ocr_engine": "win_media_ocr",
+      "model_id": "qwen_1.5b",
+      "workload": "idiom",
+      "total_cpu_idle_ms": 280.6,
+      "total_gpu_idle_ms": 74.7,
+      "total_cpu_stress_ms": 587.4,
+      "combined_quality_score": 9.42,
+      "meets_instant_hud_sla": true
+    },
+    {
+      "ocr_engine": "win_media_ocr",
+      "model_id": "qwen_1.5b",
+      "workload": "paragraph",
+      "total_cpu_idle_ms": 1795.8,
+      "total_gpu_idle_ms": 299.9,
+      "total_cpu_stress_ms": 3946.5,
+      "combined_quality_score": 9.42,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "win_media_ocr",
+      "model_id": "qwen_1.5b",
+      "workload": "complex_a4",
+      "total_cpu_idle_ms": 7207.9,
+      "total_gpu_idle_ms": 1105.2,
+      "total_cpu_stress_ms": 15943.9,
+      "combined_quality_score": 9.42,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "rapid_ocr",
+      "model_id": "qwen_1.5b",
+      "workload": "word",
+      "total_cpu_idle_ms": 201.3,
+      "total_gpu_idle_ms": 74.3,
+      "total_cpu_stress_ms": 407.4,
+      "combined_quality_score": 9.54,
+      "meets_instant_hud_sla": true
+    },
+    {
+      "ocr_engine": "rapid_ocr",
+      "model_id": "qwen_1.5b",
+      "workload": "idiom",
+      "total_cpu_idle_ms": 297.6,
+      "total_gpu_idle_ms": 91.7,
+      "total_cpu_stress_ms": 618.4,
+      "combined_quality_score": 9.54,
+      "meets_instant_hud_sla": true
+    },
+    {
+      "ocr_engine": "rapid_ocr",
+      "model_id": "qwen_1.5b",
+      "workload": "paragraph",
+      "total_cpu_idle_ms": 1822.3,
+      "total_gpu_idle_ms": 326.4,
+      "total_cpu_stress_ms": 3993.5,
+      "combined_quality_score": 9.54,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "rapid_ocr",
+      "model_id": "qwen_1.5b",
+      "workload": "complex_a4",
+      "total_cpu_idle_ms": 7263.9,
+      "total_gpu_idle_ms": 1161.2,
+      "total_cpu_stress_ms": 16041.9,
+      "combined_quality_score": 9.54,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "rapid_ocr",
+      "model_id": "qwen_3b",
+      "workload": "word",
+      "total_cpu_idle_ms": 308.8,
+      "total_gpu_idle_ms": 85.7,
+      "total_cpu_stress_ms": 649.1,
+      "combined_quality_score": 9.68,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "rapid_ocr",
+      "model_id": "qwen_3b",
+      "workload": "idiom",
+      "total_cpu_idle_ms": 477.7,
+      "total_gpu_idle_ms": 110.4,
+      "total_cpu_stress_ms": 1021.2,
+      "combined_quality_score": 9.68,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "rapid_ocr",
+      "model_id": "qwen_3b",
+      "workload": "paragraph",
+      "total_cpu_idle_ms": 3187.0,
+      "total_gpu_idle_ms": 465.3,
+      "total_cpu_stress_ms": 7028.8,
+      "combined_quality_score": 9.68,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "rapid_ocr",
+      "model_id": "qwen_3b",
+      "workload": "complex_a4",
+      "total_cpu_idle_ms": 12859.4,
+      "total_gpu_idle_ms": 1729.2,
+      "total_cpu_stress_ms": 28478.9,
+      "combined_quality_score": 9.68,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "paddle_ocr",
+      "model_id": "qwen_7b",
+      "workload": "word",
+      "total_cpu_idle_ms": 845.0,
+      "total_gpu_idle_ms": 115.0,
+      "total_cpu_stress_ms": 1892.9,
+      "combined_quality_score": 9.85,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "paddle_ocr",
+      "model_id": "qwen_7b",
+      "workload": "idiom",
+      "total_cpu_idle_ms": 1270.0,
+      "total_gpu_idle_ms": 159.0,
+      "total_cpu_stress_ms": 2839.3,
+      "combined_quality_score": 9.85,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "paddle_ocr",
+      "model_id": "qwen_7b",
+      "workload": "paragraph",
+      "total_cpu_idle_ms": 7958.3,
+      "total_gpu_idle_ms": 828.3,
+      "total_cpu_stress_ms": 17714.3,
+      "combined_quality_score": 9.85,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "paddle_ocr",
+      "model_id": "qwen_7b",
+      "workload": "complex_a4",
+      "total_cpu_idle_ms": 31761.7,
+      "total_gpu_idle_ms": 3225.7,
+      "total_cpu_stress_ms": 70647.1,
+      "combined_quality_score": 9.85,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "tesseract_v5",
+      "model_id": "llama_3.2_1b",
+      "workload": "word",
+      "total_cpu_idle_ms": 244.8,
+      "total_gpu_idle_ms": 151.5,
+      "total_cpu_stress_ms": 549.5,
+      "combined_quality_score": 8.37,
+      "meets_instant_hud_sla": true
+    },
+    {
+      "ocr_engine": "tesseract_v5",
+      "model_id": "llama_3.2_1b",
+      "workload": "idiom",
+      "total_cpu_idle_ms": 329.5,
+      "total_gpu_idle_ms": 178.1,
+      "total_cpu_stress_ms": 740.6,
+      "combined_quality_score": 8.37,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "tesseract_v5",
+      "model_id": "llama_3.2_1b",
+      "workload": "paragraph",
+      "total_cpu_idle_ms": 1524.1,
+      "total_gpu_idle_ms": 421.5,
+      "total_cpu_stress_ms": 3404.9,
+      "combined_quality_score": 8.37,
+      "meets_instant_hud_sla": false
+    },
+    {
+      "ocr_engine": "tesseract_v5",
+      "model_id": "llama_3.2_1b",
+      "workload": "complex_a4",
+      "total_cpu_idle_ms": 5853.8,
+      "total_gpu_idle_ms": 1354.6,
+      "total_cpu_stress_ms": 13072.8,
+      "combined_quality_score": 8.37,
+      "meets_instant_hud_sla": false
+    }
+  ],
+  "stress_impact_summary": {
+    "high_cpu": {
+      "description": "Sobrecarga de CPU em 90-95% por processos em segundo plano",
+      "cpu_bound_llm_impact": "Throughput cai em ~55%, TTFT aumenta em 2.3x na CPU",
+      "tesseract_ocr_impact": "+140% aumento de latência (afetado severamente pelo escalonador da CPU)",
+      "win_media_ocr_impact": "+15% aumento de latência apenas (resiliente devido ao offload via DirectML)",
+      "mitigation_strategy": "Orquestrador detecta carga e seleciona WinMediaOCR + MarianMT/Qwen0.5B para manter SLA < 250ms"
+    },
+    "ram_pressure": {
+      "description": "Ocupação de RAM física acima de 88% gerando swapping no pagefile.sys",
+      "impact": "Congelamentos e latências de 2000-8000ms se modelos pesados (>1.5GB) forem alocados dinamicamente",
+      "mitigation_strategy": "HardwareProfiler via GlobalMemoryStatusEx bloqueia modelos > 1GB se RAM livre < 1.8GB, utilizando MarianMT (420MB) ou cache SQLite"
+    },
+    "vram_contention": {
+      "description": "VRAM da GPU dedicada saturada por outras aplicações (jogos/renderização)",
+      "impact": "Fallback para memória compartilhada PCIe derruba velocidade da RTX 5060 Ti de 225 t/s para 28 t/s",
+      "mitigation_strategy": "Monitoramento de VRAM; fallback transparente para DirectML na iGPU ou modelo ultra-leve"
+    },
+    "disk_io_saturation": {
+      "description": "Saturação de I/O em disco por downloads ou paginação pesada",
+      "impact": "Atraso no carregamento inicial a frio de pesos em até 4000ms",
+      "mitigation_strategy": "Modelos mantidos 'warm' na RAM + SQLite com PRAGMA mmap_size=256MB e temp_store=MEMORY operando 100% em RAM"
+    }
+  }
+}

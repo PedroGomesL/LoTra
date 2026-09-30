@@ -8,13 +8,31 @@ import json
 import time
 import re
 import subprocess
-from accuracy_metrics import compute_cer, compute_wer, compute_accuracy
+import sys
 
 BASE_DIR = os.path.dirname(__file__)
-DATASET_PATH = os.path.join(BASE_DIR, "dataset.json")
-A4_GT_PATH = os.path.join(BASE_DIR, "a4_ground_truth.json")
-IMAGES_DIR = os.path.join(BASE_DIR, "test_images")
-PS_SCRIPT = os.path.join(BASE_DIR, "win_ocr.ps1")
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+from accuracy_metrics import compute_cer, compute_wer, compute_accuracy
+
+DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "data"))
+RESULTS_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "results"))
+SRC_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "..", "src"))
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+DATASET_PATH = os.path.join(DATA_DIR, "dataset.json")
+if not os.path.exists(DATASET_PATH):
+    DATASET_PATH = os.path.join(BASE_DIR, "dataset.json")
+
+A4_GT_PATH = os.path.join(DATA_DIR, "a4_ground_truth.json")
+if not os.path.exists(A4_GT_PATH):
+    A4_GT_PATH = os.path.join(BASE_DIR, "a4_ground_truth.json")
+
+IMAGES_DIR = os.path.join(DATA_DIR, "test_images")
+PS_SCRIPT = os.path.join(SRC_DIR, "win_ocr.ps1")
+if not os.path.exists(PS_SCRIPT):
+    PS_SCRIPT = os.path.join(BASE_DIR, "win_ocr.ps1")
 
 with open(DATASET_PATH, "r", encoding="utf-8") as f:
     DATASET = json.load(f)
@@ -211,7 +229,7 @@ def run_benchmark():
         if diagram_analysis:
             print(f"  -> Diagramas Detectados: Digital {diagram_analysis['digital_detected_count']}/{diagram_analysis['total_diagram_texts']} | Escaneado {diagram_analysis['scanned_detected_count']}/{diagram_analysis['total_diagram_texts']}")
         
-    out_file = os.path.join(BASE_DIR, "ocr_benchmark_results.json")
+    out_file = os.path.join(RESULTS_DIR, "ocr_benchmark_results.json")
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
         

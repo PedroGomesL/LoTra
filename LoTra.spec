@@ -12,7 +12,9 @@ WIN_OCR_FILE = os.path.join(SRC_DIR, 'win_ocr.ps1')
 
 # Geração automática de ícone se ausente
 if not os.path.exists(ICON_FILE):
-    gen_icon = os.path.join(BASE_DIR, 'generate_icon.py')
+    gen_icon = os.path.join(BASE_DIR, 'scripts', 'generate_icon.py')
+    if not os.path.exists(gen_icon):
+        gen_icon = os.path.join(BASE_DIR, 'generate_icon.py')
     if os.path.exists(gen_icon):
         try:
             subprocess.run([sys.executable, gen_icon], check=True)

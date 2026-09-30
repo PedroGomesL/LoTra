@@ -19,7 +19,13 @@ import time
 from typing import Dict, List, Any
 
 BASE_DIR = os.path.dirname(__file__)
-DATASET_PATH = os.path.join(BASE_DIR, "dataset.json")
+DATA_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "data"))
+RESULTS_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "results"))
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+DATASET_PATH = os.path.join(DATA_DIR, "dataset.json")
+if not os.path.exists(DATASET_PATH):
+    DATASET_PATH = os.path.join(BASE_DIR, "dataset.json")
 
 with open(DATASET_PATH, "r", encoding="utf-8") as f:
     DATASET = json.load(f)
@@ -484,7 +490,7 @@ def run_master_benchmark():
         }
     }
 
-    out_file = os.path.join(BASE_DIR, "master_benchmark_results.json")
+    out_file = os.path.join(RESULTS_DIR, "master_benchmark_results.json")
     
     # Preserva seções existentes se já existirem
     if os.path.exists(out_file):
@@ -500,7 +506,9 @@ def run_master_benchmark():
             pass
 
     # Inclui medições reais do host se disponíveis
-    ocr_live_path = os.path.join(BASE_DIR, "ocr_benchmark_results.json")
+    ocr_live_path = os.path.join(RESULTS_DIR, "ocr_benchmark_results.json")
+    if not os.path.exists(ocr_live_path):
+        ocr_live_path = os.path.join(BASE_DIR, "ocr_benchmark_results.json")
     if os.path.exists(ocr_live_path):
         try:
             with open(ocr_live_path, "r", encoding="utf-8") as f_live:

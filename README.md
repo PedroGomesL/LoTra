@@ -1,186 +1,161 @@
-# LoTra (Local Translator & Reader) 📖⚡
+<div align="center">
+  <img src="assets/lotra.png" alt="LoTra Logo" width="140" />
+  <h1>LoTra</h1>
+  <p><strong>Local Translator & Reader</strong></p>
+  <p>Assistente local e offline de leitura e tradução (Inglês → Português Brasileiro) para Windows com OCR e contexto de documentos.</p>
 
-> **Leitor e Tradutor Instantâneo Local (Inglês $\rightarrow$ Português Brasileiro) com OCR de Baixa Latência, Princípio Read-Only e Contexto Global.**
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2B-blue.svg)](https://www.microsoft.com)
-[![Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline%20%7C%20Zero%20Telemetry-green.svg)]()
-[![Inference](https://img.shields.io/badge/Inference-GGUF%20%7C%20DirectML%20%7C%20CUDA-purple.svg)]()
-
----
-
-## 🌟 O que é o LoTra?
-
-Ler livros técnicos, artigos acadêmicos ou ficção em inglês no computador costuma ser interrompido por um ciclo cansativo: encontrar uma palavra ou expressão desconhecida, alternar de janela (`Alt+Tab`), colar no tradutor web, esperar a resposta, ler e voltar para a leitura. Esse atrito quebra o **ritmo de leitura** (*flow state*).
-
-O **LoTra** foi concebido como um software executável autônomo para Windows (`.exe`), operando 100% local e offline em segundo plano:
-1. **Tradução de Seleção (`Alt+Q`)**: Apenas selecione qualquer texto com o mouse em um leitor de PDF, navegador ou livro e pressione `Alt+Q`. O LoTra simula a cópia automaticamente (dispensando `Ctrl+C` manual), desfaz quebras de linha duras de PDF e exibe um HUD compacto com tipografia **Times New Roman**.
-2. **Comando de OCR (`Alt+W`)**: Pressione `Alt+W` para abrir o recortador de tela nativo (Windows Snipping) ou reconhecer imagens copiadas: o motor WinRT OCR extrai os caracteres com aceleração local por hardware e apresenta a tradução instantânea.
+  <p>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
+    <img src="https://img.shields.io/badge/Platform-Windows%2010%2B-0078d4.svg" alt="Platform: Windows" />
+    <img src="https://img.shields.io/badge/Python-3.10%2B-3776ab.svg" alt="Python 3.10+" />
+    <img src="https://img.shields.io/badge/Privacy-100%25%20Offline-2ea44f.svg" alt="Privacy: Offline" />
+  </p>
+</div>
 
 ---
 
-## 🚀 Principais Funcionalidades
+## Visão Geral
 
-### 1. ⚡ Inferência Local Ultrarrápida e Ajuste Adaptativo
-- **PC com GPU Fraca / CPU Pura (ex: Ryzen 4800HS)**: Roda modelos otimizados via instruções vetoriais AVX2 (`Qwen 2.5 1.5B` ou `MarianMT`), respondendo entre **120 ms e 180 ms**.
-- **PC com GPU Dedicada (ex: NVIDIA RTX 5060 Ti)**: Aceleração total via CUDA Tensor Cores (`Qwen 2.5 3B / 7B`), traduzindo em **20 ms a 50 ms**.
-- **VRAM Cleanup Ativo**: Descarrega pesos da GPU após uso para não monopolizar a placa de vídeo durante jogos ou tarefas pesadas.
+O **LoTra** auxilia na leitura de artigos técnicos, livros e documentos em inglês sem necessidade de alternar janelas ou depender de serviços em nuvem. Ele roda em segundo plano e apresenta traduções instantâneas em uma interface flutuante (HUD).
 
-### 2. 👁️ Subsistema de OCR de Duplo Estágio
-- **Windows Media OCR (Nativo WinRT / DirectML)**: Zero dependências externas de download, latência imbatível de **16 ms a 28 ms**.
-- **RapidOCR (ONNX Runtime)**: Fallback de alta precisão para digitalizações antigas com inclinação ou ruído de granulação.
-- **Supressão de Marca-Texto**: Filtro espectral HSV que neutraliza canetas fluorescentes (amarelo, verde, rosa, laranja) e entrega caracteres pretos nítidos ao OCR.
+### Comandos Principais
 
-### 3. 🛡️ Segurança, Privacidade e Princípio Read-Only Estrito
-- **Zero Poluição de Diretórios**: O aplicativo **nunca escreve** nos diretórios ou no NAS/NFS onde os livros residem (sem pastas `.cache`, `.sherlock` ou `@eaDir`).
-- **Isolamento de Estado**: 100% dos dados, índices e configurações ficam estritamente em `%LOCALAPPDATA%\LoTra\`.
-- **Anti-Vazamento (Zero-Disk Leaks)**: Capturas de tela e páginas renderizadas transitam exclusivamente em memória RAM (`io.BytesIO`) e sofrem higienização forçada de memória (*memory wiping*) imediatamente após a extração.
-
-### 4. 🧠 Contexto Global do Documento (Sem Proliferação de Arquivos)
-- **Arquivo Único SQLite WAL (`reader_vault.db`)**: Centraliza metadados, títulos, resumos de introdução e vocabulário sem criar milhares de arquivos soltos.
-- **Invariância de Movimentação (SHA-256 64KB)**: Se você renomear um livro ou movê-lo de pasta, o sistema detecta a identidade do arquivo instantaneamente, preservando o histórico de traduções sem reprocessamento.
-- **Injeção Hierárquica**: Alimenta a LLM com um prefixo conciso do assunto do livro, garantindo traduções com a acepção correta para termos polissêmicos.
-
-### 5. 🔍 Scan Incremental & Cancelamento Cooperativo
-- **Fase de Descoberta Rápida**: Compara `mtime` e tamanho em lote (300 arquivos validados em 78 ms).
-- **Checkpoints Persistentes**: Salva o cursor de varredura no banco para retomar exatamente de onde parou em caso de queda de energia ou fechamento inesperado.
-- **Cancelamento Cooperativo**: Responde em menos de **1 segundo** ao comando do usuário.
+| Atalho | Ação |
+| :---: | :--- |
+| **`Alt + Q`** | **Traduzir seleção**: copia a seleção atual automaticamente e exibe a tradução com ajuste de quebras de linha de PDFs. |
+| **`Alt + W`** | **Traduzir via OCR**: aciona o recorte de tela do Windows ou processa imagem copiada para extrair texto e traduzir. |
+| **`Esc`** | Fecha a janela flutuante de tradução. |
 
 ---
 
-## 📊 Benchmarks de Performance
+## Funcionalidades
 
-Resultados medidos em testes reais na CPU (AMD Ryzen 7 4800HS 8c/16t, 20GB RAM) e modelados para RTX 5060 Ti:
-
-| Operação | Modo de Entrada | Tempo no PC Fraco (CPU) | Tempo na RTX 5060 Ti (CUDA) | Taxa de Acerto |
-| :--- | :--- | :---: | :---: | :---: |
-| **Palavra Isolada** | Texto Direto (PDF Nativo) | **~120 ms** | **~22 ms** | 100.0% |
-| **Palavra Isolada** | Via OCR (Livro Escaneado) | **~151 ms** | **~55 ms** | 100.0% |
-| **Expressão / Idiom** | Texto Direto | **~185 ms** | **~35 ms** | 100.0% |
-| **Expressão / Idiom** | Via OCR | **~215 ms** | **~68 ms** | 100.0% |
-| **Parágrafo Literário** | Texto Direto | **~1.42 s** | **~210 ms** | 100.0% |
-| **Parágrafo Literário** | Via OCR | **~1.45 s** | **~257 ms** | 99.7% |
-| **Página A4 Completa** | OCR de Página com Diagramas | **~183 ms** | **~45 ms** | 6/6 caixas de diagrama |
+- **Tradução Offline e Adaptativa**: dicionário técnico e acadêmico local com regras morfológicas, cache SQLite e suporte a modelos neurais locais (ONNX / Ollama).
+- **OCR Integrado**: utiliza o Windows Media OCR nativo (DirectML / WinRT) sem necessidade de dependências pesadas, com filtro para remoção de marca-texto.
+- **Princípio Read-Only**: nenhuma alteração é feita nos diretórios dos documentos lidos; metadados e cache residem exclusivamente em `%LOCALAPPDATA%\LoTra\`.
+- **Identificação por Fingerprint**: arquivos movidos ou renomeados mantêm histórico e contexto via hash dos primeiros 64 KB.
+- **Interface Flutuante (HUD)**: tooltip translúcido com tipografia ajustada para leitura contínua e suporte a múltiplos monitores.
 
 ---
 
-## 🏗️ Estrutura do Repositório
+## Estrutura do Repositório
 
 ```text
 LoTra/
-├── src/
-│   ├── core/
-│   │   ├── adaptive_engine_orchestrator.py # Detecção de hardware e seleção de SLA
-│   │   ├── document_context_vault.py       # Cofre SQLite WAL e injeção de contexto
-│   │   ├── incremental_scanner.py          # Scanner incremental em duas fases
-│   │   ├── pdf_resilience_manager.py       # Carving de streams e montagem de 2 páginas
-│   │   └── privacy_vault.py                # Wiping de memória e proteção DPAPI
-│   ├── ocr/
-│   │   ├── win_media_ocr.py                # Wrapper WinRT / DirectML nativo do Windows
-│   │   └── rapid_ocr_engine.py             # Motor ONNX Runtime para fallback
-│   ├── translation/
-│   │   ├── llm_engine.py                   # Runtime GGUF (llama.cpp) / DirectML / CUDA
-│   │   └── prompt_templates.py             # Prompts de tradução direta sem enrolação
-│   └── ui/
-│       ├── hud_tooltip.py                  # Popup flutuante translúcido (PyQt6 / WinUI)
-│       └── snip_overlay.py                 # Máscara de seleção de recorte em tela
-├── tests/
-│   ├── test_security_privacy_scanner.py    # Suíte com 11 testes de segurança e scan
-│   └── test_system_architecture.py         # Testes de orquestrador, SLA e resiliência
-├── docs/
-│   ├── benchmark_report.md                 # Relatório quantitativo completo com gráficos
-│   └── security_architecture.md            # Especificação de segurança e isolamento
-├── LICENSE
+├── assets/                  # Ícones e logotipo oficial (PNG, ICO)
+├── benchmarks/              # Suíte de benchmarks e métricas
+│   ├── data/                # Datasets e geradores de documentos sintéticos
+│   ├── results/             # Resultados canônicos em JSON
+│   ├── runners/             # Scripts de execução (master, OCR, LLM)
+│   ├── visualization/       # Geradores de gráficos comparativos
+│   └── README.md            # Documentação dos benchmarks
+├── docs/                    # Documentação técnica e relatórios de arquitetura
+├── scripts/                 # Scripts de build e utilitários
+│   ├── build_windows.ps1    # Script PowerShell para compilação
+│   ├── build_windows.py     # Script Python do PyInstaller
+│   └── generate_icon.py     # Gerador dos assets gráficos do projeto
+├── src/                     # Código-fonte da aplicação
+│   ├── adaptive_engine_orchestrator.py
+│   ├── app.py
+│   ├── document_context_vault.py
+│   ├── hud_tooltip.py
+│   ├── incremental_scanner.py
+│   ├── ocr_engine.py
+│   ├── offline_dictionary.py
+│   ├── pdf_resilience_manager.py
+│   ├── platform_core.py
+│   ├── privacy_vault.py
+│   ├── resource_utils.py
+│   ├── screen_snipper.py
+│   ├── translation_engine.py
+│   ├── ui_window.py
+│   └── win_ocr.ps1
+├── tests/                   # Bateria de testes automatizados
+│   ├── unit/                # Testes unitários (tradução, morfologia, interface)
+│   ├── integration/         # Testes de integração (segurança, arquitetura, app)
+│   ├── stress/              # Testes de carga e saturação de recursos
+│   └── simulation/          # Simulação com documentos PDF reais
+├── LoTra.spec               # Configuração do PyInstaller
+├── main.py                  # Ponto de entrada da aplicação
+├── requirements.txt         # Dependências do projeto
 └── README.md
 ```
 
 ---
 
-## 🔧 Como Executar
+## Instalação e Uso
 
-### Pré-requisitos
-- **Windows 10 ou 11 (64-bit)**
-- **Python 3.10+** (para execução a partir do código-fonte)
-- Acelerador gráfico (Opcional): Placa de vídeo NVIDIA com suporte a CUDA para o modo de alta performance.
+### Requisitos
+- Windows 10 ou 11 (64 bits)
+- Python 3.10 ou superior
 
-### Instalação
+### Configuração do Ambiente
 
 ```bash
-# Clone o repositório
 git clone https://github.com/PedroGomesL/LoTra.git
 cd LoTra
 
-# Crie e ative um ambiente virtual
 python -m venv venv
 venv\Scripts\activate
 
-# Instale as dependências
 pip install -r requirements.txt
 ```
 
-### Executando os Testes Automatizados
+### Executar a Aplicação
 
 ```bash
-# Executa a suíte de testes de segurança, privacidade e scan incremental
-python tests/test_security_privacy_scanner.py
+python main.py
+```
 
-# Executa os testes de arquitetura e resiliência de hardware
-python tests/test_system_architecture.py
-
-# Executa os testes do aplicativo e integridade do compilador Windows
-python tests/test_windows_compiler_and_app.py
+Ou usando o executável compilado:
+```bash
+.\dist\LoTra.exe
 ```
 
 ---
 
-## 🛠️ Compilador para Windows (Standalone .EXE)
+## Testes
 
-O LoTra inclui um sistema de compilação integrado para Windows que empacota o runtime do Python 3.14+, assets, ícones multi-resolução, motor Windows Media OCR (DirectML/WinRT) e o cofre ACID em um único arquivo executável autônomo (`dist/LoTra.exe`):
+Para executar toda a suíte de testes (unitários, integração, stress e simulação):
 
 ```bash
-# Opção A: Compilar via Python
-python build_windows.py
-
-# Opção B: Compilar via PowerShell
-.\build_windows.ps1
+python -m unittest discover tests
 ```
 
-O compilador realiza automaticamente a verificação pós-compilação executando o binário standalone e validando os subsistemas.
-
-### Utilização do Executável Standalone (`dist/LoTra.exe`)
+Para executar categorias específicas:
 
 ```bash
-# Inspecionar hardware físico e tier de modelo recomendado
-.\dist\LoTra.exe --profile
+# Testes unitários
+python -m unittest discover tests/unit
 
-# Tradução rápida via linha de comando
-.\dist\LoTra.exe --translate "quantum scalability"
+# Testes de integração
+python -m unittest discover tests/integration
 
-# Executar OCR nativo do Windows em uma imagem
-.\dist\LoTra.exe --ocr docs/images/latency_comparison.png
+# Testes de estresse
+python -m unittest discover tests/stress
 
-# Executar pipeline completo (OCR + Tradução contextual)
-.\dist\LoTra.exe --process docs/images/latency_comparison.png
-
-# Executar bateria de auto-diagnóstico do executável
-.\dist\LoTra.exe --test
-
-# Iniciar o assistente com HUD Tooltip overlay e listener de atalho
-.\dist\LoTra.exe --gui
+# Simulação de leitura de PDFs
+python -m unittest discover tests/simulation
 ```
 
 ---
 
-## ⌨️ Atalhos Globais (Exatamente 2 Comandos)
+## Compilação Standalone (.exe)
 
-| Atalho | Ação |
-| :---: | :--- |
-| `Alt + Q` | **Tradução de Seleção**: Traduz o texto selecionado na tela com captura/cópia automática (dispensa Ctrl+C) |
-| `Alt + W` | **Comando de OCR**: Aciona recorte de tela (Windows Snipping) ou OCR em imagem copiada e exibe a tradução |
-| `Esc` | Fecha a janela flutuante do HUD Tooltip |
+O projeto pode ser empacotado em um único executável standalone para Windows:
+
+```bash
+# Via Python
+python scripts/build_windows.py
+
+# Via PowerShell
+powershell -File scripts/build_windows.ps1
+```
+
+O binário final é gerado em `dist/LoTra.exe`.
 
 ---
 
-## 📄 Licença
+## Licença
 
-Distribuído sob a licença **MIT**. Veja `LICENSE` para mais informações.
+Este projeto é disponibilizado sob a licença [MIT](LICENSE).
