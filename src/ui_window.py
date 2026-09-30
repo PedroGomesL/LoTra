@@ -24,7 +24,11 @@ class LoTraMainWindow:
 
     def __init__(self, app: Any):
         self.app = app
-        self.root = tk.Tk()
+        if hasattr(self.app, "get_tk_root"):
+            self.root = self.app.get_tk_root()
+            self.root.deiconify()
+        else:
+            self.root = tk.Tk()
         self.root.title("LoTra - Tradução e Leitura Fluida")
         self.root.geometry("640x600")
         self.root.minsize(580, 520)
@@ -374,6 +378,10 @@ class LoTraMainWindow:
                 item = self.app._ui_queue.get_nowait()
                 if isinstance(item, dict):
                     act = item.get("_action")
+                    trans_id = item.get("trans_id")
+                    if trans_id is not None and hasattr(self.app, "_active_translation_id") and trans_id < self.app._active_translation_id:
+                        continue
+
                     if act == "start_native_snip":
                         self.app._handle_native_snip()
                         continue
@@ -398,7 +406,7 @@ class LoTraMainWindow:
                     source_text=res.get("source_text", ""),
                     latency_ms=res.get("latency_ms", 0.0),
                     engine_name=res.get("engine_used", "LoTra Engine"),
-                    timeout_sec=0.0,
+                    timeout_sec=res.get("timeout_sec", 0.0),
                     cursor_pos=res.get("cursor_pos")
                 )
             except Exception:

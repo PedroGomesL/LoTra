@@ -47,6 +47,10 @@ class NativeScreenSnipper:
         self._on_cancel_callback: Optional[Callable[[], None]] = None
         self._dismiss_start_time: float = 0.0
 
+    def set_root(self, root: Optional[tk.Tk]):
+        """Define ou atualiza a raiz única do Tkinter."""
+        self._root = root
+
     @property
     def is_active(self) -> bool:
         return self._is_snipping and self._window is not None

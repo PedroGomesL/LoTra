@@ -238,7 +238,7 @@ class VaultProtector:
         """
         if not text:
             return ""
-        data = text.encode("utf-8")
+        data = text.encode("utf-8", errors="replace")
         
         if sys.platform == "win32":
             try:

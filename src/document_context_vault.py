@@ -67,6 +67,7 @@ class DocumentContextVault:
     @contextmanager
     def _get_connection(self):
         """Cria conexão SQLite de alta performance com WAL mode habilitado e fechamento garantido."""
+        self._ensure_db_directory()
         conn = sqlite3.connect(self.db_path, timeout=10.0)
         conn.row_factory = sqlite3.Row
         # Otimizações de robustez e velocidade
@@ -686,20 +687,56 @@ class DocumentContextVault:
                 
             return " ".join(context_parts)
 
-    def lookup_cache(self, doc_hash: str, source_text: str, model_id: str, context_mode: str = "default") -> Optional[str]:
+    def lookup_cache(self, doc_hash: str, source_text: str, model_id: Optional[str] = None, context_mode: str = "default") -> Optional[str]:
         """Consulta cache instantâneo de tradução (< 0.5 ms) com suporte a descriptografia transparente."""
-        raw_key = f"{doc_hash}:{source_text.strip().lower()}:{context_mode}:{model_id}"
-        cache_key = hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
-        
-        with self._get_connection() as conn:
-            row = conn.execute("SELECT translated_text FROM translation_cache WHERE cache_key = ?", (cache_key,)).fetchone()
-            if row:
-                now = time.time()
-                conn.execute("UPDATE translation_cache SET hit_count = hit_count + 1, last_accessed_at = ? WHERE cache_key = ?", (now, cache_key))
-                stored_val = row["translated_text"]
-                if self.enable_privacy:
-                    return VaultProtector.decrypt_text(stored_val)
-                return stored_val
+        try:
+            with self._get_connection() as conn:
+                row = None
+                cache_key = None
+                if model_id is not None:
+                    raw_key = f"{doc_hash}:{source_text.strip().lower()}:{context_mode}:{model_id}"
+                    cache_key = hashlib.sha256(raw_key.encode('utf-8', errors='replace')).hexdigest()
+                    row = conn.execute("SELECT translated_text FROM translation_cache WHERE cache_key = ?", (cache_key,)).fetchone()
+                else:
+                    # Se model_id não foi especificado, tenta chave default primeiro
+                    raw_key = f"{doc_hash}:{source_text.strip().lower()}:{context_mode}:default"
+                    cache_key = hashlib.sha256(raw_key.encode('utf-8', errors='replace')).hexdigest()
+                    row = conn.execute("SELECT translated_text FROM translation_cache WHERE cache_key = ?", (cache_key,)).fetchone()
+                    if not row:
+                        norm_src = source_text.strip().lower()
+                        if not self.enable_privacy:
+                            # Busca indexada direta pelo texto de origem (< 0.1ms)
+                            row = conn.execute(
+                                "SELECT cache_key, translated_text FROM translation_cache WHERE doc_hash = ? AND LOWER(TRIM(source_text)) = ? ORDER BY COALESCE(last_accessed_at, created_at) DESC LIMIT 1",
+                                (doc_hash, norm_src)
+                            ).fetchone()
+                            if row:
+                                cache_key = row["cache_key"]
+                        else:
+                            # Busca nas entradas recentes do documento com descriptografia transparente
+                            rows = conn.execute(
+                                "SELECT cache_key, source_text, translated_text FROM translation_cache WHERE doc_hash = ? ORDER BY COALESCE(last_accessed_at, created_at) DESC LIMIT 200",
+                                (doc_hash,)
+                            ).fetchall()
+                            for r in rows:
+                                dec_src = VaultProtector.decrypt_text(r["source_text"])
+                                if dec_src.strip().lower() == norm_src:
+                                    row = r
+                                    cache_key = r["cache_key"]
+                                    break
+
+                if row:
+                    now = time.time()
+                    try:
+                        conn.execute("UPDATE translation_cache SET hit_count = hit_count + 1, last_accessed_at = ? WHERE cache_key = ?", (now, cache_key))
+                    except Exception:
+                        pass
+                    stored_val = row["translated_text"]
+                    if self.enable_privacy:
+                        return VaultProtector.decrypt_text(stored_val)
+                    return stored_val
+        except Exception:
+            return None
         return None
 
     def store_cache(self, doc_hash: str, page_num: int, source_text: str, 
@@ -707,7 +744,7 @@ class DocumentContextVault:
                     latency_ms: float, context_mode: str = "default"):
         """Armazena tradução no cache ACID, opcionalmente cifrado com DPAPI/HMAC."""
         raw_key = f"{doc_hash}:{source_text.strip().lower()}:{context_mode}:{model_id}"
-        cache_key = hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
+        cache_key = hashlib.sha256(raw_key.encode('utf-8', errors='replace')).hexdigest()
         now = time.time()
         
         # Proteção anti-vazamento em repouso
@@ -720,21 +757,24 @@ class DocumentContextVault:
             sec_context = context_used
             sec_trans = translated_text
 
-        with self._get_connection() as conn:
-            # Garante integridade referencial: registra documento ad-hoc caso não exista
-            conn.execute("""
-                INSERT OR IGNORE INTO documents 
-                (doc_hash, file_size_bytes, mtime, title, created_at, last_accessed_at, known_paths)
-                VALUES (?, 0, ?, 'Quick / Ad-hoc Translation', ?, ?, '[]')
-            """, (doc_hash, now, now, now))
+        try:
+            with self._get_connection() as conn:
+                # Garante integridade referencial: registra documento ad-hoc caso não exista
+                conn.execute("""
+                    INSERT OR IGNORE INTO documents 
+                    (doc_hash, file_size_bytes, mtime, title, created_at, last_accessed_at, known_paths)
+                    VALUES (?, 0, ?, 'Quick / Ad-hoc Translation', ?, ?, '[]')
+                """, (doc_hash, now, now, now))
 
-            conn.execute("""
-                INSERT INTO translation_cache 
-                (cache_key, doc_hash, page_num, source_text, context_used, translated_text, model_id, latency_ms, created_at, last_accessed_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(cache_key) DO UPDATE SET 
-                    translated_text = excluded.translated_text,
-                    latency_ms = excluded.latency_ms,
-                    hit_count = hit_count + 1,
-                    last_accessed_at = excluded.last_accessed_at
-            """, (cache_key, doc_hash, page_num, sec_source, sec_context, sec_trans, model_id, latency_ms, now, now))
+                conn.execute("""
+                    INSERT INTO translation_cache 
+                    (cache_key, doc_hash, page_num, source_text, context_used, translated_text, model_id, latency_ms, created_at, last_accessed_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(cache_key) DO UPDATE SET 
+                        translated_text = excluded.translated_text,
+                        latency_ms = excluded.latency_ms,
+                        hit_count = hit_count + 1,
+                        last_accessed_at = excluded.last_accessed_at
+                """, (cache_key, doc_hash, page_num, sec_source, sec_context, sec_trans, model_id, latency_ms, now, now))
+        except Exception:
+            pass

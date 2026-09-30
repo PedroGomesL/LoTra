@@ -1079,12 +1079,41 @@ class TranslationPipeline:
         # 3. Contexto do documento (se existir registro no cofre)
         context_prompt = self.vault.get_hierarchical_context_prompt(doc_hash, page_num, raw_text)
         
-        # Hierarquia Estruturada de Tradução (4 Níveis):
+        # Hierarquia Estruturada de Tradução:
         translated_result = None
         engine_used = "none"
 
+        # Consulta inicial de Cache instantâneo (< 0.5ms)
+        cached = self.vault.lookup_cache(doc_hash=doc_hash, source_text=raw_text, model_id=selected_model)
+        if cached and not (len(raw_text) > 3 and cached.strip().lower() == raw_text.lower()):
+            latency = (time.perf_counter() - t0) * 1000.0
+            if stream_callback:
+                stream_callback(cached, cached)
+            return {
+                "source_text": raw_text,
+                "translated_text": cached,
+                "latency_ms": round(latency, 2),
+                "cache_hit": True,
+                "engine_used": "DocumentContextVault Cache (ACID)",
+                "model_selected": selected_model,
+                "model_name": model_name,
+                "hardware_profile": plan.get("hardware_used")
+            }
+
+        # Nível 1: Correspondência direta no Glossário Técnico Offline (< 0.1ms)
+        lower_raw = raw_text.lower()
+        if lower_raw in OFFLINE_TECHNICAL_GLOSSARY:
+            gloss_term = OFFLINE_TECHNICAL_GLOSSARY[lower_raw]
+            if raw_text.isupper():
+                translated_result = gloss_term.upper()
+            elif raw_text[0].isupper():
+                translated_result = gloss_term.capitalize()
+            else:
+                translated_result = gloss_term
+            engine_used = "LoTra Built-in Technical Glossary"
+
         # Nível 2: Inferência via Ollama Local com modelo instalado dinamicamente
-        if self._is_ollama_available():
+        if not translated_result and self._is_ollama_available():
             ollama_model_map = {
                 "marian_mt": "qwen2.5:1.5b",
                 "qwen_0.5b": "qwen2.5:0.5b",
@@ -1101,7 +1130,7 @@ class TranslationPipeline:
                 selected_model = actual_ollama_model
                 model_name = f"Ollama ({actual_ollama_model})"
 
-                # 3. Consulta de Cache instantâneo para o modelo real selecionado
+                # Checa cache específico do modelo retornado pelo Ollama
                 cached = self.vault.lookup_cache(doc_hash=doc_hash, source_text=raw_text, model_id=selected_model)
                 if cached and not (len(raw_text) > 3 and cached.strip().lower() == raw_text.lower()):
                     latency = (time.perf_counter() - t0) * 1000.0

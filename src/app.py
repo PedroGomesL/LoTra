@@ -26,7 +26,7 @@ from platform_core import get_app_data_dir, canonicalize_path, HardwareDetector,
 from adaptive_engine_orchestrator import HardwareProfiler, AdaptiveEngineOrchestrator
 from document_context_vault import DocumentContextVault
 from ocr_engine import WindowsMediaOCREngine
-from translation_engine import TranslationPipeline
+from translation_engine import TranslationPipeline, OFFLINE_TECHNICAL_GLOSSARY
 from hud_tooltip import (
     HUDTooltip,
     HotkeyListener,
@@ -47,12 +47,27 @@ class LoTraApp:
         self.vault = DocumentContextVault(db_path=db_path)
         self.ocr_engine = WindowsMediaOCREngine()
         self.translator = TranslationPipeline(vault=self.vault)
+        self._tk_root: Optional[Any] = None
         self.hud = HUDTooltip()
         self.screen_snipper = NativeScreenSnipper(root=self.hud._root)
         self.hotkey_listener: Optional[HotkeyListener] = None
         self._ui_queue: queue.Queue = queue.Queue()
         self._is_serving: bool = False
         self.main_window: Optional[LoTraMainWindow] = None
+        self._lock = threading.Lock()
+        self._active_translation_id: int = 0
+
+    def get_tk_root(self):
+        """Retorna uma raiz única e centralizada do Tkinter para todo o aplicativo."""
+        if self._tk_root is None:
+            import tkinter as tk
+            self._tk_root = tk.Tk()
+            self._tk_root.withdraw()
+            if hasattr(self, "hud") and self.hud:
+                self.hud.set_root(self._tk_root)
+            if hasattr(self, "screen_snipper") and self.screen_snipper:
+                self.screen_snipper.set_root(self._tk_root)
+        return self._tk_root
 
     def profile_hardware(self) -> Dict[str, Any]:
         """Inspeciona o hardware da máquina em tempo real e retorna o perfil completo."""
@@ -120,7 +135,7 @@ class LoTraApp:
         """Processa e despacha tradução para o HUD com streaming em tempo real e de forma thread-safe."""
         clean_text = normalize_text_spacing(text)
         if not clean_text:
-            print("[LoTra HUD] Nenhuma seleção ou texto detectado.")
+            self._display_hud_notice("Nenhum texto válido selecionado para tradução.")
             return
 
         cursor_pos = None
@@ -132,19 +147,25 @@ class LoTraApp:
             except Exception:
                 pass
 
-        # 1. Checa se o texto já está em cache local ACID (< 1ms)
+        with self._lock:
+            self._active_translation_id += 1
+            curr_id = self._active_translation_id
+
+        # 1. Se for termo do glossário técnico ou já estiver em cache, tradução é instantânea (< 1ms)
+        is_glossary = clean_text.lower() in OFFLINE_TECHNICAL_GLOSSARY
         cached = self.vault.lookup_cache("quick_translate", clean_text)
-        if cached and not (len(clean_text) > 3 and cached.strip().lower() == clean_text.lower()):
-            res = self.translate_text(clean_text)
+        if is_glossary or (cached and not (len(clean_text) > 3 and cached.strip().lower() == clean_text.lower())):
+            res = self.translate_text(clean_text, doc_hash="quick_translate")
             res["cursor_pos"] = cursor_pos
+            res["trans_id"] = curr_id
             if threading.current_thread() is not threading.main_thread():
                 self._ui_queue.put(res)
             else:
                 self.hud.show(
                     translated_text=res["translated_text"],
-                    source_text=res["source_text"],
-                    latency_ms=res["latency_ms"],
-                    engine_name=res["engine_used"],
+                    source_text=res.get("source_text", ""),
+                    latency_ms=res.get("latency_ms", 0.0),
+                    engine_name=res.get("engine_used", "LoTra Engine"),
                     timeout_sec=0.0,
                     cursor_pos=cursor_pos
                 )
@@ -152,26 +173,33 @@ class LoTraApp:
 
         # 2. Se for inferência via LLM, ativa streaming em tempo real para TTFT imediato
         if threading.current_thread() is not threading.main_thread():
-            self._ui_queue.put({"_action": "stream_start", "cursor_pos": cursor_pos})
+            self._ui_queue.put({"_action": "stream_start", "cursor_pos": cursor_pos, "trans_id": curr_id})
             
             def stream_cb(delta: str, full_so_far: str):
+                if curr_id != self._active_translation_id:
+                    return
                 self._ui_queue.put({
                     "_action": "stream_chunk",
                     "delta": delta,
                     "full_text": full_so_far,
-                    "cursor_pos": cursor_pos
+                    "cursor_pos": cursor_pos,
+                    "trans_id": curr_id
                 })
 
-            res = self.translate_text(clean_text, stream_callback=stream_cb)
+            res = self.translate_text(clean_text, doc_hash="quick_translate", stream_callback=stream_cb)
+            if curr_id != self._active_translation_id:
+                return
+
             res["cursor_pos"] = cursor_pos
-            self._ui_queue.put({"_action": "stream_end", "res": res})
+            res["trans_id"] = curr_id
+            self._ui_queue.put({"_action": "stream_end", "res": res, "trans_id": curr_id})
         else:
             self.hud.start_stream(cursor_pos=cursor_pos)
             def stream_cb(delta: str, full_so_far: str):
                 self.hud.update_stream(delta, full_so_far)
                 self.hud.pump_events()
 
-            res = self.translate_text(clean_text, stream_callback=stream_cb)
+            res = self.translate_text(clean_text, doc_hash="quick_translate", stream_callback=stream_cb)
             self.hud.finish_stream(
                 final_text=res["translated_text"],
                 latency_ms=res.get("latency_ms", 0.0),
@@ -179,13 +207,13 @@ class LoTraApp:
             )
 
     def _display_hud_notice(self, notice_text: str):
-        """Exibe avisos informativos do sistema (ex: UIPI / privilégios) no HUD."""
+        """Exibe avisos informativos do sistema (ex: UIPI / privilégios / seleção vazia) no HUD."""
         payload = {
             "translated_text": notice_text,
             "source_text": "",
             "latency_ms": 0.0,
-            "engine_used": "LoTra Security Shield (UIPI)",
-            "timeout_sec": 0.0
+            "engine_used": "LoTra",
+            "timeout_sec": 3.0
         }
         if threading.current_thread() is not threading.main_thread():
             self._ui_queue.put(payload)
@@ -195,8 +223,8 @@ class LoTraApp:
             translated_text=notice_text,
             source_text="",
             latency_ms=0.0,
-            engine_name="LoTra Security Shield (UIPI)",
-            timeout_sec=0.0
+            engine_name="LoTra",
+            timeout_sec=3.0
         )
 
     def trigger_quick_translation_from_selection(self):
@@ -206,15 +234,22 @@ class LoTraApp:
         2. Normaliza quebras de linha duras de PDF em fluxo de parágrafo contínuo.
         3. Traduz via motor local e enfileira exibição no HUD tooltip.
         """
-        clip_text = simulate_copy_selection()
+        with self._lock:
+            now = time.perf_counter()
+            if hasattr(self, "_last_alt_q_trigger") and (now - self._last_alt_q_trigger) < 0.25:
+                return
+            self._last_alt_q_trigger = now
+
+        clip_text = simulate_copy_selection(timeout_sec=0.40)
         if clip_text.startswith("[Aviso UIPI]"):
             self._display_hud_notice(clip_text)
             return
 
         if not clip_text:
-            clip_text = get_windows_clipboard_text()
-            if not clip_text:
-                return
+            self._display_hud_notice(
+                "Nenhum texto selecionado.\nSelecione o texto desejado e pressione Alt+Q."
+            )
+            return
 
         self._dispatch_translation(clip_text)
 
@@ -240,7 +275,7 @@ class LoTraApp:
             def ocr_task():
                 ocr_res = self.ocr_engine.recognize_pil_image(img)
                 if not ocr_res.get("success") or not ocr_res.get("text"):
-                    print("[LoTra OCR Snip] Nenhum texto legível encontrado pelo OCR.")
+                    self._display_hud_notice("Nenhum texto legível detectado na captura de tela.")
                     return
                 clean_text = normalize_text_spacing(ocr_res["text"])
                 trans_res = self.translate_text(clean_text)
@@ -323,6 +358,12 @@ class LoTraApp:
         if self.screen_snipper and self.screen_snipper.is_active:
             self.screen_snipper.cancel()
         self.hud.destroy()
+        if self._tk_root:
+            try:
+                self._tk_root.destroy()
+            except Exception:
+                pass
+            self._tk_root = None
         if self.vault:
             self.vault.shutdown()
         VRAMManager.trim_process_memory()
@@ -359,6 +400,10 @@ class LoTraApp:
                         item = self._ui_queue.get_nowait()
                         if isinstance(item, dict):
                             act = item.get("_action")
+                            trans_id = item.get("trans_id")
+                            if trans_id is not None and trans_id < self._active_translation_id:
+                                continue
+
                             if act == "start_native_snip":
                                 self._handle_native_snip()
                                 continue
@@ -383,7 +428,7 @@ class LoTraApp:
                             source_text=res.get("source_text", ""),
                             latency_ms=res.get("latency_ms", 0.0),
                             engine_name=res.get("engine_used", "LoTra Engine"),
-                            timeout_sec=0.0,
+                            timeout_sec=res.get("timeout_sec", 0.0),
                             cursor_pos=res.get("cursor_pos")
                         )
                     except queue.Empty:

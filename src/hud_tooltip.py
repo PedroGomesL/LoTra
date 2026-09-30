@@ -48,6 +48,59 @@ class MONITORINFO(ctypes.Structure):
         ("dwFlags", ctypes.c_ulong),
     ]
 
+class KEYBDINPUT(ctypes.Structure):
+    _fields_ = [
+        ("wVk", ctypes.c_ushort),
+        ("wScan", ctypes.c_ushort),
+        ("dwFlags", ctypes.c_ulong),
+        ("time", ctypes.c_ulong),
+        ("dwExtraInfo", ctypes.c_size_t),
+    ]
+
+class MOUSEINPUT(ctypes.Structure):
+    _fields_ = [
+        ("dx", ctypes.c_long),
+        ("dy", ctypes.c_long),
+        ("mouseData", ctypes.c_ulong),
+        ("dwFlags", ctypes.c_ulong),
+        ("time", ctypes.c_ulong),
+        ("dwExtraInfo", ctypes.c_size_t),
+    ]
+
+class HARDWAREINPUT(ctypes.Structure):
+    _fields_ = [
+        ("uMsg", ctypes.c_ulong),
+        ("wParamL", ctypes.c_ushort),
+        ("wParamH", ctypes.c_ushort),
+    ]
+
+class _INPUT_UNION(ctypes.Union):
+    _fields_ = [
+        ("ki", KEYBDINPUT),
+        ("mi", MOUSEINPUT),
+        ("hi", HARDWAREINPUT),
+    ]
+
+class INPUT(ctypes.Structure):
+    _anonymous_ = ("_u",)
+    _fields_ = [
+        ("type", ctypes.c_ulong),
+        ("_u", _INPUT_UNION),
+    ]
+
+class GUITHREADINFO(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", ctypes.c_ulong),
+        ("flags", ctypes.c_ulong),
+        ("hwndActive", ctypes.c_void_p),
+        ("hwndFocus", ctypes.c_void_p),
+        ("hwndCapture", ctypes.c_void_p),
+        ("hwndMenuOwner", ctypes.c_void_p),
+        ("hwndMoveSize", ctypes.c_void_p),
+        ("hwndCaret", ctypes.c_void_p),
+        ("rcCaret", RECT),
+    ]
+
 def enable_dpi_awareness():
     """Habilita conscientização de DPI por monitor no Windows para evitar distorção e coordenadas erradas."""
     if sys.platform != "win32":
@@ -71,7 +124,7 @@ def _setup_win32_prototypes():
     k32 = ctypes.windll.kernel32
     u32 = ctypes.windll.user32
 
-    # Kernel32 Memory
+    # Kernel32 Memory & Process
     k32.GlobalAlloc.restype = ctypes.c_void_p
     k32.GlobalAlloc.argtypes = [ctypes.c_uint, ctypes.c_size_t]
     k32.GlobalLock.restype = ctypes.c_void_p
@@ -92,8 +145,10 @@ def _setup_win32_prototypes():
     u32.SetClipboardData.argtypes = [ctypes.c_uint, ctypes.c_void_p]
     u32.GetClipboardData.restype = ctypes.c_void_p
     u32.GetClipboardData.argtypes = [ctypes.c_uint]
+    u32.GetClipboardSequenceNumber.restype = ctypes.c_uint
+    u32.GetClipboardSequenceNumber.argtypes = []
 
-    # User32 Hotkeys & Cursor
+    # User32 Input & Hotkeys
     u32.RegisterHotKey.restype = ctypes.c_bool
     u32.RegisterHotKey.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_uint, ctypes.c_uint]
     u32.UnregisterHotKey.restype = ctypes.c_bool
@@ -109,19 +164,30 @@ def _setup_win32_prototypes():
     u32.GetCursorPos.restype = ctypes.c_bool
     u32.GetCursorPos.argtypes = [ctypes.POINTER(ctypes.wintypes.POINT)]
     u32.keybd_event.restype = None
-    u32.keybd_event.argtypes = [ctypes.c_byte, ctypes.c_byte, ctypes.c_uint, ctypes.c_size_t]
-    u32.GetClipboardSequenceNumber.restype = ctypes.c_uint
-    u32.GetClipboardSequenceNumber.argtypes = []
+    u32.keybd_event.argtypes = [ctypes.c_ubyte, ctypes.c_ubyte, ctypes.c_uint, ctypes.c_size_t]
+    u32.MapVirtualKeyW.restype = ctypes.c_uint
+    u32.MapVirtualKeyW.argtypes = [ctypes.c_uint, ctypes.c_uint]
+    u32.SendInput.restype = ctypes.c_uint
+    u32.SendInput.argtypes = [ctypes.c_uint, ctypes.POINTER(INPUT), ctypes.c_int]
 
-    # User32 Multi-Monitor & Foreground Window
-    u32.MonitorFromPoint.restype = ctypes.c_void_p
-    u32.MonitorFromPoint.argtypes = [ctypes.wintypes.POINT, ctypes.c_uint]
-    u32.GetMonitorInfoW.restype = ctypes.c_bool
-    u32.GetMonitorInfoW.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    # User32 Windows & Thread Info
     u32.GetForegroundWindow.restype = ctypes.wintypes.HWND
     u32.GetForegroundWindow.argtypes = []
     u32.GetWindowThreadProcessId.restype = ctypes.wintypes.DWORD
     u32.GetWindowThreadProcessId.argtypes = [ctypes.wintypes.HWND, ctypes.POINTER(ctypes.wintypes.DWORD)]
+    u32.GetGUIThreadInfo.restype = ctypes.c_bool
+    u32.GetGUIThreadInfo.argtypes = [ctypes.c_ulong, ctypes.c_void_p]
+    u32.SendMessageTimeoutW.restype = ctypes.c_long
+    u32.SendMessageTimeoutW.argtypes = [
+        ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p, ctypes.c_void_p,
+        ctypes.c_uint, ctypes.c_uint, ctypes.POINTER(ctypes.c_size_t)
+    ]
+
+    # User32 Multi-Monitor
+    u32.MonitorFromPoint.restype = ctypes.c_void_p
+    u32.MonitorFromPoint.argtypes = [ctypes.wintypes.POINT, ctypes.c_uint]
+    u32.GetMonitorInfoW.restype = ctypes.c_bool
+    u32.GetMonitorInfoW.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
 
     # Shcore DPI per monitor
     try:
@@ -230,21 +296,86 @@ def is_foreground_window_elevated() -> bool:
         pass
     return False
 
-def get_windows_clipboard_text() -> str:
-    """Lê texto da área de transferência do Windows via Win32 API direta."""
+_CLIPBOARD_FALLBACK_BUFFER: str = ""
+_last_clipboard_change_time: float = 0.0
+_last_clipboard_seq: int = 0
+_COPY_SIMULATION_LOCK = threading.Lock()
+
+def _send_synthetic_key(vk: int, is_up: bool = False):
+    """Envia evento de tecla usando SendInput com fallback transparente para keybd_event."""
     if sys.platform != "win32":
-        return ""
+        return
+    u32 = ctypes.windll.user32
+    scan = u32.MapVirtualKeyW(vk, 0)
+    flags = 0x0002 if is_up else 0
+
+    # 1. Tenta SendInput
+    try:
+        inp = INPUT()
+        inp.type = 1  # INPUT_KEYBOARD
+        inp.ki.wVk = vk
+        inp.ki.wScan = scan
+        inp.ki.dwFlags = flags
+        inp.ki.time = 0
+        inp.ki.dwExtraInfo = 0
+        arr = (INPUT * 1)(inp)
+        if u32.SendInput(1, arr, ctypes.sizeof(INPUT)) == 1:
+            return
+    except Exception:
+        pass
+
+    # 2. Fallback resiliente para keybd_event
+    try:
+        u32.keybd_event(vk & 0xFF, scan & 0xFF, flags, 0)
+    except Exception:
+        pass
+
+def _force_release_all_modifiers():
+    """Libera todas as teclas modificadoras (Alt, Ctrl, Shift, Win) e a tecla Q sinteticamente."""
+    if sys.platform != "win32":
+        return
+    # Libera Alt
+    _send_synthetic_key(0xA4, is_up=True)  # VK_LMENU
+    _send_synthetic_key(0xA5, is_up=True)  # VK_RMENU
+    _send_synthetic_key(0x12, is_up=True)  # VK_MENU
+    # Libera Q
+    _send_synthetic_key(0x51, is_up=True)  # VK_Q
+    # Libera Shift
+    _send_synthetic_key(0xA0, is_up=True)  # VK_LSHIFT
+    _send_synthetic_key(0xA1, is_up=True)  # VK_RSHIFT
+    _send_synthetic_key(0x10, is_up=True)  # VK_SHIFT
+    # Libera Win
+    _send_synthetic_key(0x5B, is_up=True)  # VK_LWIN
+    _send_synthetic_key(0x5C, is_up=True)  # VK_RWIN
+
+def _suppress_menu_activation():
+    """Envia menu-mask key (VK_CONTROL) para evitar que o Windows ative a barra de menu ao soltar Alt."""
+    if sys.platform != "win32":
+        return
+    _send_synthetic_key(0x11, is_up=False)  # Ctrl down
+    time.sleep(0.005)
+    _send_synthetic_key(0x11, is_up=True)   # Ctrl up
+
+def get_windows_clipboard_text() -> str:
+    """Lê texto da área de transferência do Windows via Win32 API direta, com retentativas de lock."""
+    global _CLIPBOARD_FALLBACK_BUFFER, _last_clipboard_change_time, _last_clipboard_seq
+    if sys.platform != "win32":
+        return _CLIPBOARD_FALLBACK_BUFFER
+
     user32 = ctypes.windll.user32
     kernel32 = ctypes.windll.kernel32
     CF_UNICODETEXT = 13
-    
+
     # Tenta abrir o clipboard com breves tentativas se estiver ocupado
-    for _ in range(5):
+    opened = False
+    for _ in range(3):
         if user32.OpenClipboard(None):
+            opened = True
             break
-        time.sleep(0.02)
-    else:
-        return ""
+        time.sleep(0.005)
+
+    if not opened:
+        return _CLIPBOARD_FALLBACK_BUFFER
 
     try:
         handle = user32.GetClipboardData(CF_UNICODETEXT)
@@ -254,48 +385,62 @@ def get_windows_clipboard_text() -> str:
         if not ptr:
             return ""
         try:
-            return ctypes.c_wchar_p(ptr).value or ""
+            val = ctypes.c_wchar_p(ptr).value or ""
+            if val:
+                _CLIPBOARD_FALLBACK_BUFFER = val
+                _last_clipboard_change_time = time.time()
+            return val
         finally:
             kernel32.GlobalUnlock(handle)
+    except Exception:
+        return _CLIPBOARD_FALLBACK_BUFFER
     finally:
         user32.CloseClipboard()
 
 def set_windows_clipboard_text(text: str) -> bool:
-    """Grava texto na área de transferência do Windows via Win32 API."""
+    """Grava texto na área de transferência do Windows via Win32 API com liberação estrita de recursos."""
+    global _CLIPBOARD_FALLBACK_BUFFER, _last_clipboard_change_time, _last_clipboard_seq
+    _CLIPBOARD_FALLBACK_BUFFER = text
+    _last_clipboard_change_time = time.time()
     if sys.platform != "win32":
-        return False
+        return True
+
     user32 = ctypes.windll.user32
     kernel32 = ctypes.windll.kernel32
     CF_UNICODETEXT = 13
     GMEM_MOVEABLE = 0x0002
-    
-    encoded = (text + "\0").encode("utf-16le")
+
+    encoded = (text + "\0").encode("utf-16le", errors="replace")
     size = len(encoded)
-    
+
     h_mem = kernel32.GlobalAlloc(GMEM_MOVEABLE, size)
     if not h_mem:
-        return False
-        
+        return True
+
     ptr = kernel32.GlobalLock(h_mem)
     if not ptr:
         kernel32.GlobalFree(h_mem)
-        return False
-        
+        return True
+
     ctypes.memmove(ptr, encoded, size)
     kernel32.GlobalUnlock(h_mem)
-    
-    for _ in range(5):
+
+    for _ in range(3):
         if user32.OpenClipboard(None):
             break
-        time.sleep(0.02)
+        time.sleep(0.005)
     else:
         kernel32.GlobalFree(h_mem)
-        return False
-        
+        return True
+
     try:
         user32.EmptyClipboard()
         res = user32.SetClipboardData(CF_UNICODETEXT, h_mem)
-        return bool(res)
+        if not res:
+            kernel32.GlobalFree(h_mem)
+            return True
+        _last_clipboard_seq = user32.GetClipboardSequenceNumber()
+        return True
     finally:
         user32.CloseClipboard()
 
@@ -311,7 +456,14 @@ def normalize_text_spacing(text: str) -> str:
     if not text:
         return ""
 
-    t = text.replace("\r\n", "\n").replace("\r", "\n").strip()
+    # Sanitiza caracteres nulos, controle e surrogates quebrados
+    t = text.replace("\x00", "")
+    try:
+        t = t.encode('utf-16', 'surrogatepass').decode('utf-16', 'replace')
+    except Exception:
+        pass
+    t = re.sub(r'[\x01-\x08\x0b\x0c\x0e-\x1f\x7f\ufffd]', '', t)
+    t = t.replace("\r\n", "\n").replace("\r", "\n").strip()
     if not t:
         return ""
 
@@ -371,67 +523,121 @@ def normalize_text_spacing(text: str) -> str:
     result = re.sub(r'[ \t]+', ' ', result).strip()
     return result
 
-def simulate_copy_selection(timeout_sec: float = 0.35) -> str:
+def simulate_copy_selection(timeout_sec: float = 0.40) -> str:
     """
     Simula o comando de cópia (Ctrl+C) na janela ativa do Windows
     para capturar o texto selecionado pelo usuário sem que seja necessário
     pressionar Ctrl+C manualmente antes de Alt+Q.
 
-    Verificação O(0ms) de integridade de token UIPI:
-    Se a janela em primeiro plano for de nível elevado (Administrador) e o LoTra
-    estiver em privilégio padrão:
-    - Se o usuário já tiver copiado texto manualmente para o clipboard (pre-copied), utiliza-o imediatamente.
-    - Se o clipboard estiver vazio, aborta instantaneamente em O(0ms) e retorna aviso explicativo
-      sem travar o usuário aguardando timeout de mensagens que o kernel descartaria.
+    Estratégia ultra-robusta de 8 etapas:
+    1. Lock de concorrência com timeout para evitar colisão entre múltiplos disparos rápidos.
+    2. Verificação O(0ms) de integridade UIPI: se janela for Admin e LoTra não for,
+       usa pré-cópia se existir ou exibe aviso explicativo.
+    3. Aguarda liberação física de Alt e Q (até 350ms), retornando imediatamente no release.
+    4. Força liberação de todos os modificadores e aplica menu-mask key para impedir Menu Loop.
+    5. Captura seq_before via GetClipboardSequenceNumber().
+    6. Emite Ctrl+C sintético com scan codes de hardware e hold time calibrado (20ms).
+    7. Aguarda de forma reativa a atualização do clipboard (até timeout_sec).
+    8. Se sequence number mudou, lê da área de transferência com retentativas de lock.
+       Se não mudou, tenta estratégia secundária via WM_COPY na janela com foco.
+       Se ainda não mudou, verifica se o usuário pré-copiou manualmente nos últimos 3 segundos.
+       Se nada foi selecionado/copiado, retorna string vazia para exibir aviso claro no HUD.
     """
     if sys.platform != "win32":
         return ""
 
+    global _last_clipboard_seq, _last_clipboard_change_time
     user32 = ctypes.windll.user32
 
-    # 0. Verificação O(0ms) de integridade UIPI antes de enviar eventos de teclado
-    if not is_process_elevated() and is_foreground_window_elevated():
-        pre_copied = get_windows_clipboard_text().strip()
-        if pre_copied:
-            return pre_copied
-        return "[Aviso UIPI] Janela em modo Administrador detectada. Execute o LoTra como Administrador ou use Ctrl+C antes do Alt+Q."
+    # 1. Lock de concorrência: se outro worker já estiver simulando cópia, aguarda até 0.45s
+    acquired = _COPY_SIMULATION_LOCK.acquire(timeout=0.45)
+    if not acquired:
+        return ""
 
-    seq_before = user32.GetClipboardSequenceNumber()
-
-    # 1. Garante que as teclas modificadoras estejam liberadas para não interferir no envio do Ctrl+C
-    VK_LMENU = 0xA4
-    VK_RMENU = 0xA5
-    user32.keybd_event(VK_LMENU, 0, KEYEVENTF_KEYUP, 0)
-    user32.keybd_event(VK_RMENU, 0, KEYEVENTF_KEYUP, 0)
-    user32.keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0)
-    time.sleep(0.02)
-
-    # 2. Emite o comando Ctrl+C
-    user32.keybd_event(VK_CONTROL, 0, 0, 0)
-    time.sleep(0.015)
-    user32.keybd_event(VK_C, 0, 0, 0)
-    time.sleep(0.02)
-    user32.keybd_event(VK_C, 0, KEYEVENTF_KEYUP, 0)
-    time.sleep(0.015)
-    user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
-
-    # 3. Aguarda a aplicação ativa atualizar o clipboard
-    deadline = time.perf_counter() + timeout_sec
-    while time.perf_counter() < deadline:
-        time.sleep(0.02)
-        if user32.GetClipboardSequenceNumber() != seq_before:
-            break
-
-    # 4. Retorna o texto capturado ou trata restrição de privilégio UIPI
-    if user32.GetClipboardSequenceNumber() == seq_before:
+    try:
+        # 2. Verificação O(0ms) de integridade UIPI
         if not is_process_elevated() and is_foreground_window_elevated():
             pre_copied = get_windows_clipboard_text().strip()
             if pre_copied:
                 return pre_copied
             return "[Aviso UIPI] Janela em modo Administrador detectada. Execute o LoTra como Administrador ou use Ctrl+C antes do Alt+Q."
-        return ""
 
-    return get_windows_clipboard_text()
+        # 3. Aguarda liberação física das teclas Alt e Q (até 350ms)
+        deadline_release = time.perf_counter() + 0.35
+        while time.perf_counter() < deadline_release:
+            alt_pressed = bool(user32.GetAsyncKeyState(0x12) & 0x8000)
+            q_pressed = bool(user32.GetAsyncKeyState(0x51) & 0x8000)
+            if not alt_pressed and not q_pressed:
+                break
+            time.sleep(0.015)
+
+        # 4. Libera modificadores e mascara menu para manter o foco no documento
+        _force_release_all_modifiers()
+        _suppress_menu_activation()
+        time.sleep(0.015)
+
+        seq_before = user32.GetClipboardSequenceNumber()
+
+        # 5. Emite Ctrl+C com dual-engine e hold time calibrado
+        _send_synthetic_key(0x11, is_up=False)  # Ctrl down
+        time.sleep(0.015)
+        _send_synthetic_key(0x43, is_up=False)  # C down
+        time.sleep(0.025)
+        _send_synthetic_key(0x43, is_up=True)   # C up
+        time.sleep(0.015)
+        _send_synthetic_key(0x11, is_up=True)   # Ctrl up
+
+        # 6. Aguarda a aplicação ativa atualizar o clipboard
+        deadline = time.perf_counter() + max(0.25, timeout_sec)
+        while time.perf_counter() < deadline:
+            time.sleep(0.015)
+            if user32.GetClipboardSequenceNumber() != seq_before:
+                break
+
+        # 7. Se o número de sequência mudou, lê com breves retentativas
+        curr_seq = user32.GetClipboardSequenceNumber()
+        if curr_seq != seq_before:
+            for _ in range(5):
+                clip = get_windows_clipboard_text()
+                if clip:
+                    _last_clipboard_seq = curr_seq
+                    _last_clipboard_change_time = time.time()
+                    return clip
+                time.sleep(0.02)
+
+        # 8. Estratégia Secundária: Envia WM_COPY (0x0301) diretamente à janela com foco
+        try:
+            fg = user32.GetForegroundWindow()
+            if fg:
+                tid = user32.GetWindowThreadProcessId(fg, None)
+                gti = GUITHREADINFO()
+                gti.cbSize = ctypes.sizeof(GUITHREADINFO)
+                if user32.GetGUIThreadInfo(tid, ctypes.byref(gti)) and gti.hwndFocus:
+                    res_val = ctypes.c_size_t(0)
+                    user32.SendMessageTimeoutW(gti.hwndFocus, 0x0301, 0, 0, 2, 100, ctypes.byref(res_val))
+                    time.sleep(0.05)
+                    if user32.GetClipboardSequenceNumber() != seq_before:
+                        for _ in range(4):
+                            clip = get_windows_clipboard_text()
+                            if clip:
+                                _last_clipboard_seq = user32.GetClipboardSequenceNumber()
+                                _last_clipboard_change_time = time.time()
+                                return clip
+                            time.sleep(0.02)
+        except Exception:
+            pass
+
+        # 9. Fallback seguro para pré-cópia recente do usuário (copiado nos últimos 3 segundos)
+        now_ts = time.time()
+        if (now_ts - _last_clipboard_change_time) < 3.0:
+            existing = get_windows_clipboard_text()
+            if existing and existing.strip():
+                return existing
+
+        # Se nada foi selecionado ou copiado, retorna vazio para acionar o aviso explicativo do HUD
+        return ""
+    finally:
+        _COPY_SIMULATION_LOCK.release()
 
 class HUDTooltip:
     """
@@ -442,8 +648,8 @@ class HUDTooltip:
     - Sem auto-dismiss forçado por padrão (timeout_sec=0.0): permanece aberto até o usuário decidir fechar.
     """
     
-    def __init__(self):
-        self._root = None
+    def __init__(self, root: Optional[Any] = None):
+        self._root = root
         self._window = None
         self._main_frame = None
         self._trans_label = None
@@ -460,13 +666,20 @@ class HUDTooltip:
         self._mon_bottom = 1080
         self._font_size = 11
 
+    def set_root(self, root: Any):
+        """Define ou atualiza a raiz única do Tkinter para compartilhamento seguro de event loop."""
+        self._root = root
+
     def _update_geometry(self, display_text: str):
         """Ajusta dimensões, wrap e posição da janela HUD dinamicamente respeitando limites do monitor."""
         if not self._window or not self._trans_label:
             return
 
+        self._full_text = display_text
         char_len = len(display_text)
         mon_w = max(400, self._mon_right - self._mon_left)
+        mon_h = max(300, self._mon_bottom - self._mon_top)
+
         if char_len < 45 and "\n" not in display_text:
             wrap_width = 0
         elif char_len < 160:
@@ -480,7 +693,13 @@ class HUDTooltip:
         if wrap_width > 0:
             wrap_width = min(wrap_width, max_wrap)
 
-        self._trans_label.config(text=display_text, wraplength=wrap_width)
+        # Trunca para visualização limpa no HUD caso o texto selecionado seja gigantesco (> 3500 caracteres)
+        if len(display_text) > 3500:
+            visual_text = display_text[:3500].rstrip() + "\n\n[... Tradução truncada para exibição no HUD. Clique para copiar o texto completo ...]"
+        else:
+            visual_text = display_text
+
+        self._trans_label.config(text=visual_text, wraplength=wrap_width)
         self._window.update_idletasks()
 
         win_w = self._window.winfo_reqwidth()
@@ -491,9 +710,9 @@ class HUDTooltip:
         pos_y = cy + 18
 
         min_x = self._mon_left + 15
-        max_x = self._mon_right - win_w - 15
+        max_x = max(min_x, self._mon_right - win_w - 15)
         min_y = self._mon_top + 15
-        max_y = self._mon_bottom - win_h - 15
+        max_y = max(min_y, self._mon_bottom - win_h - 15)
 
         if pos_x > max_x:
             pos_x = max(min_x, cx - win_w - 15) if (cx - win_w - 15) >= min_x else max_x
@@ -563,8 +782,9 @@ class HUDTooltip:
         self._trans_label.pack(anchor="w")
 
         def on_click(event):
-            if self._current_text and self._current_text != "...":
-                set_windows_clipboard_text(self._current_text)
+            target_copy = getattr(self, "_full_text", "") or self._current_text
+            if target_copy and target_copy != "...":
+                set_windows_clipboard_text(target_copy)
             self.dismiss()
 
         window.bind("<Button-1>", on_click)
@@ -605,7 +825,8 @@ class HUDTooltip:
         self._update_geometry(clean_text)
 
         def on_click(event):
-            set_windows_clipboard_text(clean_text)
+            target_copy = getattr(self, "_full_text", "") or clean_text
+            set_windows_clipboard_text(target_copy)
             self.dismiss()
 
         self._window.bind("<Button-1>", on_click)
@@ -713,6 +934,35 @@ class HotkeyListener:
         self.on_ocr_snip = on_ocr_snip  # Disparado com Alt+W (OCR)
         self.running = False
         self._thread: Optional[threading.Thread] = None
+        self._last_q_time: float = 0.0
+        self._last_w_time: float = 0.0
+        self._trigger_lock = threading.Lock()
+
+    def _trigger_q(self):
+        """Dispara callback de Alt+Q com debounce de hardware (250ms)."""
+        with self._trigger_lock:
+            now = time.perf_counter()
+            if (now - self._last_q_time) < 0.25:
+                return
+            self._last_q_time = now
+        if self.callback:
+            try:
+                threading.Thread(target=self.callback, daemon=True, name="LoTra_Q_Worker").start()
+            except Exception as e:
+                print(f"[HotkeyListener Alt+Q Error] {e}")
+
+    def _trigger_w(self):
+        """Dispara callback de Alt+W com debounce de hardware (250ms)."""
+        with self._trigger_lock:
+            now = time.perf_counter()
+            if (now - self._last_w_time) < 0.25:
+                return
+            self._last_w_time = now
+        if self.on_ocr_snip:
+            try:
+                threading.Thread(target=self.on_ocr_snip, daemon=True, name="LoTra_W_Worker").start()
+            except Exception as e:
+                print(f"[HotkeyListener Alt+W Error] {e}")
 
     def start(self):
         """Inicia escuta em segundo plano."""
@@ -723,8 +973,10 @@ class HotkeyListener:
         self._thread.start()
 
     def stop(self):
-        """Para a escuta de hotkey."""
+        """Para a escuta de hotkey com desregistro imediato."""
         self.running = False
+        if self._thread and self._thread.is_alive() and threading.current_thread() != self._thread:
+            self._thread.join(timeout=0.3)
 
     def _hotkey_loop(self):
         user32 = ctypes.windll.user32
@@ -734,7 +986,7 @@ class HotkeyListener:
         VK_W = 0x57
         MOD_NOREPEAT = 0x4000
 
-        # Registra estritamente os 2 atalhos: Alt+Q e Alt+W (com MOD_NOREPEAT para evitar disparos repetidos por retenção da tecla)
+        # Tenta registrar estritamente os 2 atalhos: Alt+Q e Alt+W
         reg_q = user32.RegisterHotKey(0, HOTKEY_ID_Q, MOD_ALT | MOD_NOREPEAT, VK_Q)
         if not reg_q:
             reg_q = user32.RegisterHotKey(0, HOTKEY_ID_Q, MOD_ALT, VK_Q)
@@ -743,52 +995,49 @@ class HotkeyListener:
         if not reg_w:
             reg_w = user32.RegisterHotKey(0, HOTKEY_ID_W, MOD_ALT, VK_W)
 
-        if reg_q or reg_w:
+        # Se ambos registraram com sucesso no sistema operacional
+        if reg_q and reg_w:
             msg = ctypes.wintypes.MSG()
             try:
                 while self.running:
-                    # Drena mensagens pendentes sem bloquear indefinidamente
                     while user32.PeekMessageW(ctypes.byref(msg), 0, 0, 0, 1):  # PM_REMOVE
                         if msg.message == WM_HOTKEY:
-                            if msg.wParam == HOTKEY_ID_Q and self.callback:
-                                try:
-                                    self.callback()
-                                except Exception as e:
-                                    print(f"[HotkeyListener Alt+Q Error] {e}")
-                            elif msg.wParam == HOTKEY_ID_W and self.on_ocr_snip:
-                                try:
-                                    self.on_ocr_snip()
-                                except Exception as e:
-                                    print(f"[HotkeyListener Alt+W Error] {e}")
+                            if msg.wParam == HOTKEY_ID_Q:
+                                self._trigger_q()
+                            elif msg.wParam == HOTKEY_ID_W:
+                                self._trigger_w()
                         user32.TranslateMessage(ctypes.byref(msg))
                         user32.DispatchMessageW(ctypes.byref(msg))
-                    time.sleep(0.03)
+                    time.sleep(0.015)
             finally:
-                if reg_q:
-                    user32.UnregisterHotKey(0, HOTKEY_ID_Q)
-                if reg_w:
-                    user32.UnregisterHotKey(0, HOTKEY_ID_W)
+                user32.UnregisterHotKey(0, HOTKEY_ID_Q)
+                user32.UnregisterHotKey(0, HOTKEY_ID_W)
         else:
-            # Fallback para polling via GetAsyncKeyState (não requer registro exclusivo)
+            # Se algum atalho falhou no RegisterHotKey (ex: conflito com outro app ou instância anterior),
+            # libera o registro parcial e ativa polling de alta precisão com detecção de borda (edge-triggered)
+            if reg_q:
+                user32.UnregisterHotKey(0, HOTKEY_ID_Q)
+            if reg_w:
+                user32.UnregisterHotKey(0, HOTKEY_ID_W)
+
             VK_MENU = 0x12  # ALT
+            q_was_down = False
+            w_was_down = False
+
             while self.running:
                 alt_down = (user32.GetAsyncKeyState(VK_MENU) & 0x8000) != 0
                 q_down = (user32.GetAsyncKeyState(VK_Q) & 0x8000) != 0
                 w_down = (user32.GetAsyncKeyState(VK_W) & 0x8000) != 0
 
-                # Dispara se [Alt + Q] for pressionado
+                # Dispara Alt + Q apenas na transição (apertou agora)
                 if alt_down and q_down:
-                    if self.callback:
-                        try:
-                            self.callback()
-                        except Exception as e:
-                            print(f"[Hotkey Polling Alt+Q Error] {e}")
-                    time.sleep(0.4)
-                # Dispara se [Alt + W] for pressionado
-                elif alt_down and w_down and self.on_ocr_snip:
-                    try:
-                        self.on_ocr_snip()
-                    except Exception as e:
-                        print(f"[Hotkey Polling Alt+W Error] {e}")
-                    time.sleep(0.4)
-                time.sleep(0.05)
+                    if not q_was_down:
+                        self._trigger_q()
+                # Dispara Alt + W apenas na transição (apertou agora)
+                elif alt_down and w_down:
+                    if not w_was_down:
+                        self._trigger_w()
+
+                q_was_down = (alt_down and q_down)
+                w_was_down = (alt_down and w_down)
+                time.sleep(0.015)
