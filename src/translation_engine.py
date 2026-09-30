@@ -838,7 +838,7 @@ class TranslationPipeline:
         self._last_ollama_check: float = 0.0
 
     def _is_ollama_available(self) -> bool:
-        """Verifica de forma ultrarrápida (< 35ms) se o servidor local do Ollama está ouvindo."""
+        """Verifica de forma ultrarrápida (< 45ms) se o servidor local do Ollama está ouvindo."""
         now = time.perf_counter()
         if self._ollama_online is not None and (now - self._last_ollama_check) < 25.0:
             return self._ollama_online
@@ -856,7 +856,7 @@ class TranslationPipeline:
                     host = part.split("/")[0]
 
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(0.035)
+            s.settimeout(0.045)
             err = s.connect_ex((host, port))
             s.close()
             self._ollama_online = (err == 0)
@@ -865,7 +865,53 @@ class TranslationPipeline:
 
         return self._ollama_online
 
-    def _query_ollama(self, model: str, prompt: str, timeout: float = 3.5) -> Optional[str]:
+    def _get_available_ollama_model(self, preferred_model: str) -> Optional[str]:
+        """Obtém dinamicamente o melhor modelo disponível no Ollama instalado pelo usuário."""
+        if not self._is_ollama_available():
+            return None
+
+        installed = []
+        try:
+            req = urllib.request.Request(f"{self.ollama_url}/api/tags", headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    installed = [m.get("name", "") for m in data.get("models", [])]
+        except Exception:
+            pass
+
+        if not installed:
+            return None
+
+        # 1. Se o preferred_model estiver instalado diretamente
+        for m in installed:
+            if m.lower() == preferred_model.lower() or m.lower().startswith(f"{preferred_model.lower()}:"):
+                return m
+
+        # 2. Prioridade de modelos candidatos
+        candidate_priorities = [
+            preferred_model,
+            "qwen2.5:3b",
+            "qwen2.5:1.5b",
+            "llama3.2:3b",
+            "llama3.2:1b",
+            "qwen2.5:7b",
+            "qwen2.5:0.5b",
+        ]
+        for cand in candidate_priorities:
+            for inst in installed:
+                if inst.lower() == cand.lower() or inst.lower().startswith(f"{cand.lower()}:"):
+                    return inst
+
+        # 3. Qualquer modelo da família qwen, llama, mistral ou gemma instalado
+        for inst in installed:
+            inst_lower = inst.lower()
+            if any(family in inst_lower for family in ["qwen", "llama", "mistral", "gemma", "phi"]):
+                return inst
+
+        return installed[0] if installed else None
+
+    def _query_ollama(self, model: str, prompt: str, timeout: float = 20.0) -> Optional[str]:
         """Tenta comunicação local com Ollama se o servidor estiver ativo."""
         if not self._is_ollama_available():
             return None
@@ -878,7 +924,7 @@ class TranslationPipeline:
             "options": {
                 "temperature": 0.1,
                 "top_p": 0.9,
-                "num_predict": 128
+                "num_predict": 512
             }
         }).encode("utf-8")
 
@@ -894,9 +940,15 @@ class TranslationPipeline:
                     data = json.loads(resp.read().decode("utf-8"))
                     res = data.get("response", "").strip()
                     if res:
+                        # Limpa possíveis aspas ou preâmbulos desnecessários gerados pelo modelo
+                        if (res.startswith('"') and res.endswith('"')) or (res.startswith("“") and res.endswith("”")):
+                            res = res[1:-1].strip()
+                        if res.lower().startswith("tradução:"):
+                            res = res[len("tradução:"):].strip()
+                        if res.lower().startswith("tradução :"):
+                            res = res[len("tradução :"):].strip()
                         return res
         except Exception:
-            self._ollama_online = False
             return None
         return None
 
@@ -908,9 +960,9 @@ class TranslationPipeline:
         """
         Executa tradução 100% local com:
         1. Normalização de espaçamento e quebras duras de linha de PDFs.
-        2. Decisão de modelo baseada em hardware real.
+        2. Decisão de modelo baseada em hardware real e modelos do Ollama instalados.
         3. Verificação de cache ultrarrápido no DocumentContextVault (< 1ms).
-        4. Inferência local via Ollama LLM (Qwen 2.5 / Llama 3.2) se disponível.
+        4. Inferência local via Ollama LLM (Qwen 2.5 / Llama 3.2) dinamicamente detectado.
         5. Fallback 100% offline via LoTra Built-in Offline Translator (Glossário e Regras).
         6. Gravação no cache ACID local em SQLite.
         7. Retorno estruturado com métricas e metadados.
@@ -943,44 +995,15 @@ class TranslationPipeline:
         selected_model = plan.get("translation_model", "qwen_1.5b")
         model_name = plan.get("model_name", "Qwen 2.5 1.5B-Instruct")
 
-        # 3. Consulta de Cache instantâneo
-        cached = self.vault.lookup_cache(doc_hash=doc_hash, source_text=raw_text, model_id=selected_model)
-        # Rejeita cache corrompido ou entradas antigas onde a tradução falhou e ficou idêntica ao original em inglês
-        if cached and not (len(raw_text) > 3 and cached.strip().lower() == raw_text.lower()):
-            latency = (time.perf_counter() - t0) * 1000.0
-            return {
-                "source_text": raw_text,
-                "translated_text": cached,
-                "latency_ms": round(latency, 2),
-                "cache_hit": True,
-                "engine_used": "DocumentContextVault Cache (ACID)",
-                "model_selected": selected_model,
-                "model_name": model_name,
-                "hardware_profile": plan.get("hardware_used")
-            }
-
-        # 4. Contexto do documento (se existir registro no cofre)
+        # 3. Contexto do documento (se existir registro no cofre)
         context_prompt = self.vault.get_hierarchical_context_prompt(doc_hash, page_num, raw_text)
         
         # Hierarquia Estruturada de Tradução (4 Níveis):
-        # Nível 1: Cache ACID ultrarrápido do DocumentContextVault (< 1ms) - verificado acima
-        # Nível 2: Ollama Local (LLM neural com contexto se o servidor estiver ativo)
-        # Nível 3: ONNX Runtime / DirectML (Motor local neural sem servidor)
-        # Nível 4: LoTra Built-in Offline Translator (Glossário e Regras 100% autônomo)
         translated_result = None
         engine_used = "none"
 
-        # Nível 2: Inferência via Ollama Local (se ativo)
+        # Nível 2: Inferência via Ollama Local com modelo instalado dinamicamente
         if self._is_ollama_available():
-            system_instruction = (
-                "Traduza o seguinte texto do inglês para o português brasileiro de forma natural, precisa e fluente. "
-                "Retorne EXCLUSIVAMENTE a tradução final, sem introdução, sem aspas adicionais e sem explicações."
-            )
-            if context_prompt:
-                prompt = f"Contexto: {context_prompt}\n\n{system_instruction}\n\nTexto: {raw_text}"
-            else:
-                prompt = f"{system_instruction}\n\nTexto: {raw_text}"
-
             ollama_model_map = {
                 "marian_mt": "qwen2.5:0.5b",
                 "qwen_0.5b": "qwen2.5:0.5b",
@@ -990,10 +1013,56 @@ class TranslationPipeline:
                 "llama_3.2_3b": "llama3.2:3b",
                 "qwen_7b": "qwen2.5:7b"
             }
-            ollama_model = ollama_model_map.get(selected_model, "qwen2.5:1.5b")
-            translated_result = self._query_ollama(ollama_model, prompt)
-            if translated_result:
-                engine_used = f"Ollama Local ({ollama_model})"
+            preferred = ollama_model_map.get(selected_model, "qwen2.5:1.5b")
+            actual_ollama_model = self._get_available_ollama_model(preferred)
+            
+            if actual_ollama_model:
+                selected_model = actual_ollama_model
+                model_name = f"Ollama ({actual_ollama_model})"
+
+                # 3. Consulta de Cache instantâneo para o modelo real selecionado
+                cached = self.vault.lookup_cache(doc_hash=doc_hash, source_text=raw_text, model_id=selected_model)
+                if cached and not (len(raw_text) > 3 and cached.strip().lower() == raw_text.lower()):
+                    latency = (time.perf_counter() - t0) * 1000.0
+                    return {
+                        "source_text": raw_text,
+                        "translated_text": cached,
+                        "latency_ms": round(latency, 2),
+                        "cache_hit": True,
+                        "engine_used": "DocumentContextVault Cache (ACID)",
+                        "model_selected": selected_model,
+                        "model_name": model_name,
+                        "hardware_profile": plan.get("hardware_used")
+                    }
+
+                system_instruction = (
+                    "Traduza o seguinte texto do inglês para o português brasileiro de forma natural, precisa e fluente. "
+                    "Retorne EXCLUSIVAMENTE a tradução final, sem introdução, sem aspas adicionais e sem explicações."
+                )
+                if context_prompt:
+                    prompt = f"Contexto: {context_prompt}\n\n{system_instruction}\n\nTexto: {raw_text}"
+                else:
+                    prompt = f"{system_instruction}\n\nTexto: {raw_text}"
+
+                translated_result = self._query_ollama(actual_ollama_model, prompt, timeout=20.0)
+                if translated_result:
+                    engine_used = f"Ollama Local ({actual_ollama_model})"
+
+        # Se Ollama não respondeu, checa cache para o modelo padrão ou fallback
+        if not translated_result:
+            cached = self.vault.lookup_cache(doc_hash=doc_hash, source_text=raw_text, model_id=selected_model)
+            if cached and not (len(raw_text) > 3 and cached.strip().lower() == raw_text.lower()):
+                latency = (time.perf_counter() - t0) * 1000.0
+                return {
+                    "source_text": raw_text,
+                    "translated_text": cached,
+                    "latency_ms": round(latency, 2),
+                    "cache_hit": True,
+                    "engine_used": "DocumentContextVault Cache (ACID)",
+                    "model_selected": selected_model,
+                    "model_name": model_name,
+                    "hardware_profile": plan.get("hardware_used")
+                }
 
         # Nível 3: Inferência Neural Local via ONNX Runtime / DirectML (MarianMT / Opus-MT)
         if not translated_result and self.onnx_engine.is_available():
@@ -1005,6 +1074,7 @@ class TranslationPipeline:
         if not translated_result:
             translated_result = OfflineContextTranslator.translate(raw_text, context_prompt)
             engine_used = "LoTra Built-in Offline Translator"
+
 
         latency = (time.perf_counter() - t0) * 1000.0
 

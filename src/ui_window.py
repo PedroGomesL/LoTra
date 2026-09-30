@@ -114,11 +114,20 @@ class LoTraMainWindow:
         badge_frame = tk.Frame(status_box, bg=self.c_teal_dark, padx=10, pady=5)
         badge_frame.pack(anchor="e")
 
-        dot_lbl = tk.Label(badge_frame, text="●", font=("Arial", 11), fg="#4ade80", bg=self.c_teal_dark)
-        dot_lbl.pack(side=tk.LEFT, padx=(0, 5))
+        ollama_active = False
+        ollama_model = ""
+        if hasattr(self.app, "translator") and self.app.translator._is_ollama_available():
+            ollama_model = self.app.translator._get_available_ollama_model("qwen2.5:3b") or ""
+            ollama_active = bool(ollama_model)
 
-        status_text = tk.Label(badge_frame, text="Serviço Ativo", font=("Arial", 9, "bold"), fg="#ffffff", bg=self.c_teal_dark)
-        status_text.pack(side=tk.LEFT)
+        dot_color = "#4ade80" if ollama_active else "#f59e0b"
+        status_str = f"LLM Ativa ({ollama_model})" if ollama_active else "Offline (Dicionário)"
+
+        self.lbl_status_dot = tk.Label(badge_frame, text="●", font=("Arial", 11), fg=dot_color, bg=self.c_teal_dark)
+        self.lbl_status_dot.pack(side=tk.LEFT, padx=(0, 5))
+
+        self.lbl_status_text = tk.Label(badge_frame, text=status_str, font=("Arial", 9, "bold"), fg="#ffffff", bg=self.c_teal_dark)
+        self.lbl_status_text.pack(side=tk.LEFT)
 
     def _build_hotkey_cards(self):
         """Card explicativo dos 2 atalhos globais suportados."""
@@ -266,7 +275,12 @@ class LoTraMainWindow:
         # Informação de hardware
         try:
             hw = self.app.profile_hardware()
-            hw_str = f"Hardware: {hw['cpu_cores']} núcleos CPU | RAM: {hw['avail_ram_gb']}GB livre | GPU: {hw['gpu_name']} ({hw['recommended_tier'].upper()})"
+            engine_str = "Offline (Dicionário)"
+            if hasattr(self.app, "translator") and self.app.translator._is_ollama_available():
+                m = self.app.translator._get_available_ollama_model("qwen2.5:3b")
+                if m:
+                    engine_str = f"Ollama Local ({m})"
+            hw_str = f"Hardware: {hw['cpu_cores']} núcleos CPU | RAM: {hw['avail_ram_gb']}GB livre | GPU: {hw['gpu_name']} | Motor: {engine_str}"
         except Exception:
             hw_str = "Modo: 100% Offline e Seguro | Princípio Read-Only ativo"
 
