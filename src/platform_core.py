@@ -648,6 +648,8 @@ class WindowsJobObject:
         """Associa um subprocesso ao Job Object."""
         if not self.handle or sys.platform != "win32":
             return False
+        opened_handle = False
+        raw_handle = None
         try:
             kernel32 = ctypes.windll.kernel32
             if hasattr(proc_or_handle, "_handle"):
@@ -655,6 +657,7 @@ class WindowsJobObject:
             elif isinstance(proc_or_handle, int):
                 PROCESS_ALL_ACCESS = 0x1F0FFF
                 raw_handle = kernel32.OpenProcess(PROCESS_ALL_ACCESS, False, proc_or_handle)
+                opened_handle = True
             else:
                 raw_handle = int(proc_or_handle)
 
@@ -662,6 +665,12 @@ class WindowsJobObject:
             return bool(res)
         except Exception:
             return False
+        finally:
+            if opened_handle and raw_handle:
+                try:
+                    ctypes.windll.kernel32.CloseHandle(raw_handle)
+                except Exception:
+                    pass
 
     def close(self):
         """Fecha o handle do Job Object. Com JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, encerra os processos filhos."""
@@ -672,6 +681,9 @@ class WindowsJobObject:
                 pass
             self.handle = None
             self._is_active = False
+
+    def __del__(self):
+        self.close()
 
     def __enter__(self):
         return self
@@ -769,7 +781,7 @@ class LocalNeuralEngineManager:
                     "status": "already_running",
                     "message": f"Motor neural já está ativo ({len(models)} modelo(s) disponível(is)).",
                     "models": models,
-                    "managed_by_lotra": False
+                    "managed_by_lotra": self._managed_proc is not None
                 }
 
             bin_path = self.find_binary()
@@ -802,6 +814,20 @@ class LocalNeuralEngineManager:
                 t0 = time.time()
                 listening = False
                 while time.time() - t0 < 3.5:
+                    if self._managed_proc.poll() is not None:
+                        # Processo encerrou prematuramente
+                        code = self._managed_proc.returncode
+                        self._managed_proc = None
+                        if self.job_object:
+                            self.job_object.close()
+                            self.job_object = None
+                        return {
+                            "success": False,
+                            "status": "failed_to_start",
+                            "message": f"Processo do motor neural encerrou prematuramente (código: {code}).",
+                            "models": [],
+                            "managed_by_lotra": False
+                        }
                     if self.is_server_listening():
                         listening = True
                         break
@@ -811,7 +837,7 @@ class LocalNeuralEngineManager:
                 return {
                     "success": True,
                     "status": "started" if listening else "starting",
-                    "pid": self._managed_proc.pid,
+                    "pid": self._managed_proc.pid if self._managed_proc else None,
                     "message": "Motor neural iniciado com sucesso sob contenção Job Object.",
                     "models": models,
                     "managed_by_lotra": True
@@ -897,5 +923,18 @@ def get_neural_engine_manager() -> LocalNeuralEngineManager:
     if _NEURAL_ENGINE_MANAGER is None:
         _NEURAL_ENGINE_MANAGER = LocalNeuralEngineManager()
     return _NEURAL_ENGINE_MANAGER
+
+
+def _cleanup_neural_engine_at_exit():
+    """Garante liberação de memória VRAM e encerramento limpo do motor neural ao sair do processo."""
+    global _NEURAL_ENGINE_MANAGER
+    if _NEURAL_ENGINE_MANAGER is not None:
+        try:
+            _NEURAL_ENGINE_MANAGER.stop_engine()
+        except Exception:
+            pass
+
+import atexit
+atexit.register(_cleanup_neural_engine_at_exit)
 
 

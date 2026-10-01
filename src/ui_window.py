@@ -1035,6 +1035,8 @@ class LoTraMainWindow:
         """Atualiza os indicadores do motor neural local de forma assíncrona."""
         def _worker():
             try:
+                if not hasattr(self.app, "get_neural_engine_status"):
+                    return
                 st = self.app.get_neural_engine_status()
                 models = st.get("models", [])
                 running = st.get("running", False)
@@ -1072,6 +1074,8 @@ class LoTraMainWindow:
                             self.lbl_engine_badge.config(text=badge_txt, bg=self.c_teal_light, fg=self.c_teal_dark)
                         else:
                             self.lbl_engine_badge.config(text="⚡ Offline Integrado", bg="#f1ede6", fg=self.c_text_muted)
+                    if hasattr(self, "var_neural_enabled"):
+                        self.var_neural_enabled.set(neural_enabled)
 
                 self._schedule_on_ui_thread(_ui)
             except Exception:
@@ -1087,7 +1091,8 @@ class LoTraMainWindow:
             self.lbl_neural_status.config(text="⏳ Inicializando motor...", bg="#fff3cd", fg="#856404")
 
         def _worker():
-            self.app.start_neural_engine()
+            if hasattr(self.app, "start_neural_engine"):
+                self.app.start_neural_engine()
             self._schedule_on_ui_thread(self._refresh_neural_status)
 
         threading.Thread(target=_worker, daemon=True, name="LoTra_StartNeural_Worker").start()
@@ -1100,7 +1105,8 @@ class LoTraMainWindow:
             self.lbl_neural_status.config(text="⏳ Descarregando VRAM...", bg="#fff3cd", fg="#856404")
 
         def _worker():
-            self.app.stop_neural_engine()
+            if hasattr(self.app, "stop_neural_engine"):
+                self.app.stop_neural_engine()
             self._schedule_on_ui_thread(self._refresh_neural_status)
 
         threading.Thread(target=_worker, daemon=True, name="LoTra_StopNeural_Worker").start()
@@ -1108,7 +1114,8 @@ class LoTraMainWindow:
     def _on_toggle_neural_enabled(self):
         """Alterna a ativação da inferência neural local."""
         val = self.var_neural_enabled.get()
-        self.app.set_neural_enabled(val)
+        if hasattr(self.app, "set_neural_enabled"):
+            self.app.set_neural_enabled(val)
         self._refresh_neural_status()
 
     def _build_hardware_footer(self):

@@ -19,6 +19,7 @@ ASSETS_DIR = BASE_DIR / "assets"
 ICON_PATH = ASSETS_DIR / "lotra.ico"
 WIN_OCR_SCRIPT = BASE_DIR / "src" / "win_ocr.ps1"
 ENTRY_POINT = BASE_DIR / "main.py"
+APP_VERSION = "0.5.0"
 
 def print_header(title: str):
     print("\n" + "=" * 70)
@@ -218,6 +219,24 @@ def verify_executable(exe_path: Path):
 
     print_header("TODAS AS VERIFICAÇÕES DO EXECUTÁVEL PASSARAM COM 100% DE SUCESSO!")
 
+def package_release_zip(exe_path: Path) -> Path:
+    """Empacota o executável e documentação em arquivo ZIP oficial para a release."""
+    import zipfile
+    zip_name = f"LoTra-v{APP_VERSION}-windows-x64.zip"
+    zip_path = DIST_DIR / zip_name
+    print(f"\n>>> Empacotando release oficial: {zip_name}...")
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.write(exe_path, arcname="LoTra.exe")
+        readme = BASE_DIR / "README.md"
+        if readme.exists():
+            zf.write(readme, arcname="README.md")
+        license_file = BASE_DIR / "LICENSE"
+        if license_file.exists():
+            zf.write(license_file, arcname="LICENSE")
+    size_mb = zip_path.stat().st_size / (1024 * 1024)
+    print(f"[OK] Pacote ZIP gerado: {zip_path} ({size_mb:.2f} MB)")
+    return zip_path
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="LoTra Windows Compiler & Standalone Packager")
@@ -225,15 +244,17 @@ def main():
     parser.add_argument("--no-verify", action="store_true", help="Pula os testes de validação pós-compilação")
     args = parser.parse_args()
 
-    print_header(f"LOTRA BUILD SYSTEM - PYTHON {sys.version.split()[0]} WINDOWS")
+    print_header(f"LOTRA BUILD SYSTEM v{APP_VERSION} - PYTHON {sys.version.split()[0]} WINDOWS")
     ensure_assets()
     clean_previous_builds()
     exe = run_pyinstaller_build(mode=args.mode)
     if not args.no_verify:
         verify_executable(exe)
 
-    print("\nExecutável pronto para distribuição em:")
-    print(f"  file:///{str(exe).replace(os.sep, '/')}\n")
+    zip_pkg = package_release_zip(exe)
+    print("\nExecutável e pacote prontos para distribuição em:")
+    print(f"  file:///{str(exe).replace(os.sep, '/')}")
+    print(f"  file:///{str(zip_pkg).replace(os.sep, '/')}\n")
 
 if __name__ == "__main__":
     main()

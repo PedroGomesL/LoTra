@@ -252,6 +252,8 @@ class TestLoTraBugsAndUI(unittest.TestCase):
             def __init__(self):
                 self._ui_queue = None
                 self._is_serving = True
+                self.neural_running = False
+                self.neural_enabled = True
             def profile_hardware(self):
                 return {
                     "cpu_cores": 8,
@@ -273,6 +275,22 @@ class TestLoTraBugsAndUI(unittest.TestCase):
                 return {"all_passed": True, "subsystems": {}}
             def stop_hud_service(self):
                 pass
+            def get_neural_engine_status(self):
+                return {
+                    "installed": True,
+                    "running": self.neural_running,
+                    "models": ["qwen2.5:1.5b"] if self.neural_running else [],
+                    "neural_enabled": self.neural_enabled,
+                    "display_text": "[ATIVO]" if self.neural_running else "[INATIVO]"
+                }
+            def start_neural_engine(self):
+                self.neural_running = True
+                return {"success": True, "status": "started"}
+            def stop_neural_engine(self):
+                self.neural_running = False
+                return {"success": True, "status": "stopped"}
+            def set_neural_enabled(self, val):
+                self.neural_enabled = bool(val)
 
         mock_app = MockApp()
         win = LoTraMainWindow(app=mock_app)
@@ -300,6 +318,30 @@ class TestLoTraBugsAndUI(unittest.TestCase):
             # 4. Execução de self-test pela UI
             win._run_gui_self_test()
             self.assertIn("100%", win.lbl_selftest_res.cget("text"))
+
+            # 5. Validação dos controles do Motor Neural Local (LLM) • Zero-Friction
+            win._switch_tab("hardware")
+            self.assertTrue(hasattr(win, "lbl_neural_status"))
+            self.assertTrue(hasattr(win, "btn_start_neural"))
+            self.assertTrue(hasattr(win, "btn_stop_neural"))
+            self.assertTrue(hasattr(win, "chk_neural_enable"))
+
+            # Toggle neural
+            win.var_neural_enabled.set(False)
+            win._on_toggle_neural_enabled()
+            self.assertFalse(mock_app.neural_enabled)
+
+            # Inicia motor
+            win._on_start_neural_clicked()
+            time.sleep(0.1)
+            win.root.update()
+            self.assertTrue(mock_app.neural_running)
+
+            # Para motor
+            win._on_stop_neural_clicked()
+            time.sleep(0.1)
+            win.root.update()
+            self.assertFalse(mock_app.neural_running)
         finally:
             win.root.destroy()
 

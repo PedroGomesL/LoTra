@@ -16,8 +16,21 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 if sys.platform == "win32":
     try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+        has_cli_args = any(arg for arg in sys.argv[1:] if arg not in ("--gui", "--hud"))
+        if has_cli_args and sys.stdout is None:
+            import ctypes
+            import io
+            # ATTACH_PARENT_PROCESS = -1
+            if ctypes.windll.kernel32.AttachConsole(-1):
+                try:
+                    sys.stdout = io.TextIOWrapper(open("CONOUT$", "wb", buffering=0), encoding="utf-8", errors="replace", line_buffering=True)
+                    sys.stderr = io.TextIOWrapper(open("CONOUT$", "wb", buffering=0), encoding="utf-8", errors="replace", line_buffering=True)
+                except Exception:
+                    pass
+        if sys.stdout is not None:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        if sys.stderr is not None:
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
         pass
 
