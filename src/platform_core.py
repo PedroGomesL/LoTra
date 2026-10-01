@@ -17,8 +17,11 @@ import urllib.request
 import json
 import gc
 import ctypes
+import threading
+import socket
+import time
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 
 APP_NAME = "LoTra"
 
@@ -568,4 +571,331 @@ class SingleInstanceGuard:
                 pass
             self.mutex = None
             self._is_primary = False
+
+
+# =========================================================================
+# Gerenciamento de Processos com Windows Job Objects (Zero-Friction Engine)
+# =========================================================================
+
+JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
+JobObjectExtendedLimitInformation = 9
+
+class IO_COUNTERS(ctypes.Structure):
+    _fields_ = [
+        ("ReadOperationCount", ctypes.c_uint64),
+        ("WriteOperationCount", ctypes.c_uint64),
+        ("OtherOperationCount", ctypes.c_uint64),
+        ("ReadTransferCount", ctypes.c_uint64),
+        ("WriteTransferCount", ctypes.c_uint64),
+        ("OtherTransferCount", ctypes.c_uint64),
+    ]
+
+class JOBOBJECT_BASIC_LIMIT_INFORMATION(ctypes.Structure):
+    _fields_ = [
+        ("PerProcessUserTimeLimit", ctypes.c_int64),
+        ("PerJobUserTimeLimit", ctypes.c_int64),
+        ("LimitFlags", ctypes.c_uint32),
+        ("MinimumWorkingSetSize", ctypes.c_size_t),
+        ("MaximumWorkingSetSize", ctypes.c_size_t),
+        ("ActiveProcessLimit", ctypes.c_uint32),
+        ("Affinity", ctypes.c_size_t),
+        ("PriorityClass", ctypes.c_uint32),
+        ("SchedulingClass", ctypes.c_uint32),
+    ]
+
+class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(ctypes.Structure):
+    _fields_ = [
+        ("BasicLimitInformation", JOBOBJECT_BASIC_LIMIT_INFORMATION),
+        ("IoInfo", IO_COUNTERS),
+        ("ProcessMemoryLimit", ctypes.c_size_t),
+        ("JobMemoryLimit", ctypes.c_size_t),
+        ("PeakProcessMemoryUsed", ctypes.c_size_t),
+        ("PeakJobMemoryUsed", ctypes.c_size_t),
+    ]
+
+
+class WindowsJobObject:
+    """
+    Gerenciador de Ciclo de Vida de Processos com Windows Job Objects (Win32 API).
+    Garante que qualquer processo filho (como servidores locais de LLM, Ollama, etc.)
+    seja sumariamente encerrado pelo kernel do Windows caso o processo pai seja finalizado,
+    fechado pelo usuário ou sofra encerramento inesperado, impedindo processos zumbis
+    e vazamento de VRAM/RAM no sistema.
+    """
+
+    def __init__(self, name: Optional[str] = None):
+        self.handle = None
+        self._is_active = False
+        if sys.platform == "win32":
+            try:
+                kernel32 = ctypes.windll.kernel32
+                self.handle = kernel32.CreateJobObjectW(None, name)
+                if self.handle:
+                    info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
+                    info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+                    success = kernel32.SetInformationJobObject(
+                        self.handle,
+                        JobObjectExtendedLimitInformation,
+                        ctypes.byref(info),
+                        ctypes.sizeof(info)
+                    )
+                    self._is_active = bool(success)
+            except Exception:
+                self.handle = None
+                self._is_active = False
+
+    def assign_process(self, proc_or_handle) -> bool:
+        """Associa um subprocesso ao Job Object."""
+        if not self.handle or sys.platform != "win32":
+            return False
+        try:
+            kernel32 = ctypes.windll.kernel32
+            if hasattr(proc_or_handle, "_handle"):
+                raw_handle = int(proc_or_handle._handle)
+            elif isinstance(proc_or_handle, int):
+                PROCESS_ALL_ACCESS = 0x1F0FFF
+                raw_handle = kernel32.OpenProcess(PROCESS_ALL_ACCESS, False, proc_or_handle)
+            else:
+                raw_handle = int(proc_or_handle)
+
+            res = kernel32.AssignProcessToJobObject(self.handle, raw_handle)
+            return bool(res)
+        except Exception:
+            return False
+
+    def close(self):
+        """Fecha o handle do Job Object. Com JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, encerra os processos filhos."""
+        if self.handle and sys.platform == "win32":
+            try:
+                ctypes.windll.kernel32.CloseHandle(self.handle)
+            except Exception:
+                pass
+            self.handle = None
+            self._is_active = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+
+class LocalNeuralEngineManager:
+    """
+    Gerenciador com 'Zero Atrito' de Motor Neural Local (LLM).
+    - Descoberta automática de binários locais (Ollama, etc.).
+    - Execução sem janelas de console e com contenção via Windows Job Objects.
+    - Zero vazamento de RAM/VRAM: descarregamento explícito e término limpo.
+    - Modo resiliente: se nenhum motor local for detectado, mantém LoTra 100% funcional
+      utilizando o motor offline contextual embutido de latência sub-milissegundo.
+    """
+
+    def __init__(self, host: str = "127.0.0.1", port: int = 11434):
+        self.host = host
+        self.port = port
+        self.api_url = f"http://{host}:{port}"
+        self.job_object: Optional[WindowsJobObject] = None
+        self._managed_proc: Optional[subprocess.Popen] = None
+        self._binary_path: Optional[str] = None
+        self._neural_enabled: bool = True
+        self._lock = threading.Lock()
+
+    def find_binary(self) -> Optional[str]:
+        """Localiza o binário do Ollama no PATH ou em diretórios comuns de instalação no Windows."""
+        if self._binary_path and Path(self._binary_path).exists():
+            return self._binary_path
+
+        found = shutil.which("ollama")
+        if found and Path(found).exists():
+            self._binary_path = canonicalize_path(found)
+            return self._binary_path
+
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        candidates = []
+        if local_app_data:
+            candidates.append(Path(local_app_data) / "Programs" / "Ollama" / "ollama.exe")
+        candidates.append(Path.home() / "AppData" / "Local" / "Programs" / "Ollama" / "ollama.exe")
+        candidates.append(Path("C:/Program Files/Ollama/ollama.exe"))
+        candidates.append(Path("C:/Program Files (x86)/Ollama/ollama.exe"))
+
+        for c in candidates:
+            if c.exists():
+                self._binary_path = canonicalize_path(c)
+                return self._binary_path
+
+        return None
+
+    def is_installed(self) -> bool:
+        """Verifica se o Ollama está instalado no sistema operacional."""
+        return self.find_binary() is not None
+
+    def is_server_listening(self) -> bool:
+        """Verifica se o servidor Ollama está respondendo na porta local (< 40ms)."""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(0.040)
+                return s.connect_ex((self.host, self.port)) == 0
+        except Exception:
+            return False
+
+    def is_neural_enabled(self) -> bool:
+        return self._neural_enabled
+
+    def set_neural_enabled(self, enabled: bool):
+        self._neural_enabled = bool(enabled)
+
+    def get_available_models(self) -> List[str]:
+        """Consulta modelos locais já baixados no Ollama."""
+        if not self.is_server_listening():
+            return []
+        try:
+            req = urllib.request.Request(f"{self.api_url}/api/tags", headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=0.8) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    models = [m.get("name", "") for m in data.get("models", []) if m.get("name")]
+                    return models
+        except Exception:
+            pass
+        return []
+
+    def start_engine(self) -> Dict[str, Any]:
+        """Inicia o servidor de IA local sob o controle estrito de Windows Job Object."""
+        with self._lock:
+            if self.is_server_listening():
+                models = self.get_available_models()
+                return {
+                    "success": True,
+                    "status": "already_running",
+                    "message": f"Motor neural já está ativo ({len(models)} modelo(s) disponível(is)).",
+                    "models": models,
+                    "managed_by_lotra": False
+                }
+
+            bin_path = self.find_binary()
+            if not bin_path or not Path(bin_path).exists():
+                return {
+                    "success": False,
+                    "status": "not_installed",
+                    "message": "Ollama não localizado. Operando em modo offline integrado sem atrito.",
+                    "models": [],
+                    "managed_by_lotra": False
+                }
+
+            try:
+                self.job_object = WindowsJobObject()
+                creationflags = 0
+                if sys.platform == "win32":
+                    creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
+                self._managed_proc = subprocess.Popen(
+                    [bin_path, "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=creationflags
+                )
+
+                if self.job_object._is_active:
+                    self.job_object.assign_process(self._managed_proc)
+
+                # Aguarda até 3.5 segundos para o servidor responder
+                t0 = time.time()
+                listening = False
+                while time.time() - t0 < 3.5:
+                    if self.is_server_listening():
+                        listening = True
+                        break
+                    time.sleep(0.2)
+
+                models = self.get_available_models() if listening else []
+                return {
+                    "success": True,
+                    "status": "started" if listening else "starting",
+                    "pid": self._managed_proc.pid,
+                    "message": "Motor neural iniciado com sucesso sob contenção Job Object.",
+                    "models": models,
+                    "managed_by_lotra": True
+                }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "status": "error",
+                    "message": f"Falha ao iniciar motor neural: {e}",
+                    "models": [],
+                    "managed_by_lotra": False
+                }
+
+    def stop_engine(self) -> Dict[str, Any]:
+        """Encerra o servidor e descarrega a VRAM com proteção anti-vazamento de memória."""
+        with self._lock:
+            # 1. Solicita descarregamento imediato da VRAM para a GPU
+            VRAMManager.unload_ollama_models(ollama_url=self.api_url)
+
+            was_managed = False
+            if self._managed_proc:
+                was_managed = True
+                try:
+                    self._managed_proc.terminate()
+                    self._managed_proc.wait(timeout=1.5)
+                except Exception:
+                    try:
+                        self._managed_proc.kill()
+                    except Exception:
+                        pass
+                self._managed_proc = None
+
+            if self.job_object:
+                self.job_object.close()
+                self.job_object = None
+
+            VRAMManager.trim_process_memory()
+
+            msg = "Motor neural encerrado e memória VRAM/RAM liberada com sucesso." if was_managed else "Memória de GPU (VRAM) e cache liberados com sucesso."
+            return {
+                "success": True,
+                "status": "stopped",
+                "message": msg,
+                "managed_by_lotra": False
+            }
+
+    def unload_vram(self, model_name: Optional[str] = None) -> bool:
+        """Descarrega modelo da GPU sem encerrar o processo servidor."""
+        res = VRAMManager.unload_ollama_models(ollama_url=self.api_url, model_name=model_name)
+        VRAMManager.trim_process_memory()
+        return res
+
+    def get_status(self) -> Dict[str, Any]:
+        """Retorna o status completo para a interface do usuário."""
+        installed = self.is_installed()
+        running = self.is_server_listening()
+        models = self.get_available_models() if running else []
+        managed = self._managed_proc is not None
+
+        if running:
+            disp = f"[ATIVO] Motor Neural Local ({len(models)} modelo(s) pronto(s))"
+        elif installed:
+            disp = "[INATIVO] Motor Local Inativo (Modo Offline Integrado Ativo)"
+        else:
+            disp = "[OFFLINE] Modo Offline Integrado (Ollama nao detectado)"
+
+        return {
+            "installed": installed,
+            "running": running,
+            "binary_path": self.find_binary(),
+            "models": models,
+            "managed_by_lotra": managed,
+            "neural_enabled": self._neural_enabled,
+            "display_text": disp
+        }
+
+
+_NEURAL_ENGINE_MANAGER: Optional[LocalNeuralEngineManager] = None
+
+def get_neural_engine_manager() -> LocalNeuralEngineManager:
+    """Retorna o singleton do gerenciador de motor neural local."""
+    global _NEURAL_ENGINE_MANAGER
+    if _NEURAL_ENGINE_MANAGER is None:
+        _NEURAL_ENGINE_MANAGER = LocalNeuralEngineManager()
+    return _NEURAL_ENGINE_MANAGER
+
 

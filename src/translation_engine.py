@@ -159,6 +159,20 @@ OFFLINE_TECHNICAL_GLOSSARY = {
     "disinformation": "desinformação",
     "creativity": "criatividade",
     "evaluation methods": "métodos de avaliação",
+    "information architecture": "arquitetura de informação",
+    "pervasive information architecture": "arquitetura de informação pervasiva",
+    "structural design": "design estrutural",
+    "shared information environments": "ambientes de informação compartilhada",
+    "information environments": "ambientes de informação",
+    "information systems": "sistemas de informação",
+    "user experience": "experiência do usuário",
+    "heuristic evaluation": "avaliação heurística",
+    "interface usability": "usabilidade de interface",
+    "architecture": "arquitetura",
+    "pervasive": "pervasivo",
+    "bridges": "conecta",
+    "encompasses": "abrange",
+    "diagnostic": "diagnóstico",
     "unflinching": "inabalável",
     "serendipity": "serendipidade",
     "preposterous": "absurdo",
@@ -842,13 +856,18 @@ class ONNXTranslationEngine:
 class TranslationPipeline:
     """Pipeline completo de tradução coordenado por hardware e cache."""
 
-    def __init__(self, vault: Optional[DocumentContextVault] = None, ollama_url: str = "http://127.0.0.1:11434"):
+    def __init__(self, vault: Optional[DocumentContextVault] = None, ollama_url: str = "http://127.0.0.1:11434", neural_enabled: Optional[bool] = None):
         self.vault = vault or DocumentContextVault()
         self.ollama_url = ollama_url
         self.orchestrator = AdaptiveEngineOrchestrator(target_latency_ms=250.0)
         self.onnx_engine = ONNXTranslationEngine()
+        self.neural_enabled = neural_enabled if neural_enabled is not None else True
         self._ollama_online: Optional[bool] = None
         self._last_ollama_check: float = 0.0
+
+    def set_neural_enabled(self, enabled: bool):
+        """Habilita ou desabilita o uso de inferência neural local (LLM)."""
+        self.neural_enabled = bool(enabled)
 
     def _is_ollama_available(self) -> bool:
         """Verifica de forma ultrarrápida (< 45ms) se o servidor local do Ollama está ouvindo."""
@@ -1125,9 +1144,15 @@ class TranslationPipeline:
             engine_used = "LoTra Built-in Technical Glossary"
 
         # Nível 2: Inferência via Ollama Local com modelo instalado dinamicamente
-        if not translated_result and self._is_ollama_available():
+        is_neural_allowed = self.neural_enabled
+        try:
+            from platform_core import get_neural_engine_manager
+            is_neural_allowed = is_neural_allowed and get_neural_engine_manager().is_neural_enabled()
+        except Exception:
+            pass
+
+        if not translated_result and is_neural_allowed and selected_model != "marian_mt" and self._is_ollama_available():
             ollama_model_map = {
-                "marian_mt": "qwen2.5:1.5b",
                 "qwen_0.5b": "qwen2.5:0.5b",
                 "qwen_1.5b": "qwen2.5:1.5b",
                 "llama_3.2_1b": "llama3.2:1b",
@@ -1168,10 +1193,11 @@ class TranslationPipeline:
                 else:
                     prompt = f"{system_instruction}\n\nTexto: {raw_text}"
 
+                ollama_timeout = min(20.0, max(0.95, (target_sla_ms * 3.5) / 1000.0))
                 translated_result = self._query_ollama(
                     actual_ollama_model, 
                     prompt, 
-                    timeout=20.0,
+                    timeout=ollama_timeout,
                     stream_callback=stream_callback,
                     dynamic_predict=dynamic_predict
                 )

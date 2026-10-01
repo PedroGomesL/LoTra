@@ -23,7 +23,7 @@ if sys.platform == "win32":
 
 from app import LoTraApp
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "0.5.0"
 
 BANNER = rf"""
 ========================================================================
@@ -46,6 +46,9 @@ def main():
                "  LoTra.exe --ocr doc.png          # Extrai texto de imagem com Windows Media OCR\n"
                "  LoTra.exe --process doc.png      # OCR + Tradução ponta a ponta\n"
                "  LoTra.exe --test                 # Executa bateria de auto-testes e diagnóstico\n"
+               "  LoTra.exe --start-engine         # Inicia motor neural local sob proteção Job Object\n"
+               "  LoTra.exe --stop-engine          # Encerra motor neural local e descarrega VRAM\n"
+               "  LoTra.exe --engine-status        # Exibe status do motor neural local\n"
                "  LoTra.exe --gui                  # Inicia serviço de segundo plano com HUD e atalhos Alt+Q e Alt+W\n"
     )
 
@@ -54,6 +57,9 @@ def main():
     parser.add_argument("--ocr", type=str, metavar="IMAGE_PATH", help="Executa OCR nativo do Windows em um arquivo de imagem")
     parser.add_argument("--process", "-p", type=str, metavar="IMAGE_PATH", help="Executa OCR na imagem e traduz o texto extraído")
     parser.add_argument("--test", action="store_true", help="Executa bateria de auto-diagnóstico dos subsistemas")
+    parser.add_argument("--start-engine", action="store_true", help="Inicia o motor neural local sob proteção de Windows Job Objects")
+    parser.add_argument("--stop-engine", action="store_true", help="Encerra o motor neural local e descarrega a VRAM")
+    parser.add_argument("--engine-status", action="store_true", help="Exibe o status do motor neural local e modelos disponíveis")
     parser.add_argument("--gui", "--hud", action="store_true", help="Inicia o HUD Tooltip com escuta dos 2 atalhos: Alt+Q (Seleção) e Alt+W (OCR)")
     parser.add_argument("--version", "-v", action="version", version=f"LoTra v{APP_VERSION}")
 
@@ -135,7 +141,36 @@ def main():
             print("ALGUNS SUBSISTEMAS APRESENTARAM FALHAS OU AVISOS.")
             return 1
 
-    if args.gui or (not args.profile and not args.translate and not args.ocr and not args.process and not args.test):
+    if args.start_engine:
+        print(BANNER)
+        print(">>> INICIANDO MOTOR NEURAL LOCAL...")
+        res = app.start_neural_engine()
+        print(f"  * Status   : {res.get('status')}")
+        print(f"  * Mensagem : {res.get('message')}")
+        if res.get('models'):
+            print(f"  * Modelos  : {', '.join(res['models'])}")
+        return 0 if res.get('success') else 1
+
+    if args.stop_engine:
+        print(BANNER)
+        print(">>> ENCERRANDO MOTOR NEURAL E LIBERANDO VRAM...")
+        res = app.stop_neural_engine()
+        print(f"  * Status   : {res.get('status')}")
+        print(f"  * Mensagem : {res.get('message')}")
+        return 0 if res.get('success') else 1
+
+    if args.engine_status:
+        print(BANNER)
+        print(">>> STATUS DO MOTOR NEURAL LOCAL:")
+        st = app.get_neural_engine_status()
+        print(f"  * Status Geral : {st.get('display_text')}")
+        print(f"  * Instalado    : {'Sim' if st.get('installed') else 'Não'}")
+        print(f"  * Em Execução  : {'Sim' if st.get('running') else 'Não'}")
+        print(f"  * Binário      : {st.get('binary_path') or 'N/A'}")
+        print(f"  * Modelos      : {', '.join(st.get('models', [])) or 'Nenhum'}")
+        return 0
+
+    if args.gui or (not args.profile and not args.translate and not args.ocr and not args.process and not args.test and not args.start_engine and not args.stop_engine and not args.engine_status):
         # Modo interativo (duplo clique ou --gui): Aplica proteção de instância única
         from platform_core import SingleInstanceGuard
         guard = SingleInstanceGuard()

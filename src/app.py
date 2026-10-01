@@ -22,7 +22,7 @@ CURRENT_DIR = Path(__file__).resolve().parent
 if str(CURRENT_DIR) not in sys.path:
     sys.path.insert(0, str(CURRENT_DIR))
 
-from platform_core import get_app_data_dir, canonicalize_path, HardwareDetector, VRAMManager
+from platform_core import get_app_data_dir, canonicalize_path, HardwareDetector, VRAMManager, get_neural_engine_manager
 from adaptive_engine_orchestrator import HardwareProfiler, AdaptiveEngineOrchestrator
 from document_context_vault import DocumentContextVault
 from ocr_engine import WindowsMediaOCREngine
@@ -39,6 +39,8 @@ from screen_snipper import NativeScreenSnipper
 from resource_utils import get_resource_path
 from ui_window import LoTraMainWindow
 
+APP_VERSION = "0.5.0"
+
 class LoTraApp:
     """Instância central do assistente LoTra."""
 
@@ -47,6 +49,7 @@ class LoTraApp:
         self.vault = DocumentContextVault(db_path=db_path)
         self.ocr_engine = WindowsMediaOCREngine()
         self.translator = TranslationPipeline(vault=self.vault)
+        self.engine_manager = get_neural_engine_manager()
         self._tk_root: Optional[Any] = None
         self.hud = HUDTooltip()
         self.screen_snipper = NativeScreenSnipper(root=self.hud._root)
@@ -413,7 +416,26 @@ class LoTraApp:
             self._tk_root = None
         if self.vault:
             self.vault.shutdown()
+        if hasattr(self, "engine_manager") and self.engine_manager:
+            self.engine_manager.stop_engine()
         VRAMManager.trim_process_memory()
+
+    def start_neural_engine(self) -> Dict[str, Any]:
+        """Inicia o motor neural local com proteção estrita via Windows Job Objects."""
+        return self.engine_manager.start_engine()
+
+    def stop_neural_engine(self) -> Dict[str, Any]:
+        """Encerra o motor neural e descarrega a VRAM sem vazamento de processos órfãos."""
+        return self.engine_manager.stop_engine()
+
+    def get_neural_engine_status(self) -> Dict[str, Any]:
+        """Obtém o status detalhado do motor neural local para a interface e auto-teste."""
+        return self.engine_manager.get_status()
+
+    def set_neural_enabled(self, enabled: bool):
+        """Ativa ou desativa o uso de inferência neural local (LLM)."""
+        self.engine_manager.set_neural_enabled(enabled)
+        self.translator.set_neural_enabled(enabled)
 
     def start_hud_service(self, show_gui: bool = True):
         """Inicia o daemon de segundo plano com escuta estrita dos 2 atalhos globais e interface gráfica."""
@@ -548,6 +570,19 @@ class LoTraApp:
             }
         except Exception as e:
             results["resource_resolution"] = {"status": "FAIL", "error": str(e)}
+
+        # 6. Local Neural Engine Lifecycle & Windows Job Objects
+        try:
+            eng_st = self.get_neural_engine_status()
+            results["neural_engine_lifecycle"] = {
+                "status": "PASS",
+                "installed": eng_st.get("installed", False),
+                "running": eng_st.get("running", False),
+                "models_count": len(eng_st.get("models", [])),
+                "display": eng_st.get("display_text", "")
+            }
+        except Exception as e:
+            results["neural_engine_lifecycle"] = {"status": "FAIL", "error": str(e)}
 
         all_passed = all(v["status"] in ("PASS", "WARN") for v in results.values())
         return {

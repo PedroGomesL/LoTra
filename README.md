@@ -5,12 +5,32 @@
   <p>Assistente local e offline de leitura e tradução (Inglês → Português Brasileiro) para Windows com OCR e contexto de documentos.</p>
 
   <p>
+    <a href="https://github.com/PedroGomesL/LoTra/releases/tag/v0.5.0"><img src="https://img.shields.io/badge/Release-v0.5.0-orange.svg" alt="Release: v0.5.0" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
     <img src="https://img.shields.io/badge/Platform-Windows%2010%2B-0078d4.svg" alt="Platform: Windows" />
-    <img src="https://img.shields.io/badge/Python-3.10%2B-3776ab.svg" alt="Python 3.10+" />
+    <img src="https://img.shields.io/badge/Zero--Friction-Standalone%20.exe-brightgreen.svg" alt="Zero Friction" />
     <img src="https://img.shields.io/badge/Privacy-100%25%20Offline-2ea44f.svg" alt="Privacy: Offline" />
   </p>
 </div>
+
+---
+
+## ⚡ Download e Execução Rápida (Zero Atrito — v0.5.0)
+
+O **LoTra** foi concebido com uma filosofia estrita de **Zero Atrito**: você não precisa instalar Python, configurar variáveis de ambiente, compilar bibliotecas ou lidar com processos zumbis consumindo sua placa de vídeo.
+
+### Como baixar e rodar em 3 passos:
+
+1. **Baixe o executável standalone**:
+   - Acesse [Releases do LoTra v0.5.0](https://github.com/PedroGomesL/LoTra/releases/tag/v0.5.0) e faça o download direto do arquivo **`LoTra.exe`** (ou do pacote `.zip`).
+2. **Execute com duplo clique**:
+   - Execute o arquivo `LoTra.exe`. O aplicativo inicia instantaneamente sua interface moderna e registra os atalhos globais no Windows.
+3. **Use imediatamente**:
+   - **`Alt + Q`**: Selecione qualquer texto com o mouse em um leitor de PDF, navegador ou editor, e aperte **Alt + Q**. A tradução instantânea em português brasileiro aparecerá no tooltip flutuante.
+   - **`Alt + W`**: Pressione para abrir o recorte de tela nativo e extrair texto por OCR com tradução instantânea.
+
+> 🛡️ **Garantia de Ciclo de Vida sem Vazamento (Windows Job Objects)**:
+> O executável gerencia processos de IA locais utilizando objetos de trabalho do kernel do Windows (`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`). Ao fechar o LoTra, **todos** os processos secundários são finalizados imediatamente e a memória VRAM/RAM é liberada por completo. Zero processos órfãos e zero consumo oculto de hardware.
 
 ---
 
@@ -31,6 +51,8 @@ O **LoTra** auxilia na leitura de artigos técnicos, livros e documentos em ingl
 ## Funcionalidades
 
 - **Tradução Offline e Adaptativa**: dicionário técnico e acadêmico local com regras morfológicas, cache SQLite e suporte a modelos neurais locais (ONNX / Ollama).
+- **Gerenciamento de Ciclo de Vida & Zero Vazamento**: contenção estrita de subprocessos via Windows Job Objects (`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`), impedindo processos zumbis ou acúmulo de RAM/VRAM ao fechar o aplicativo.
+- **Controle Integrado do Motor Neural**: interface com botões para iniciar, parar e monitorar o status do motor de IA local (LLM) com descarregamento imediato de VRAM.
 - **OCR Integrado**: utiliza o Windows Media OCR nativo (DirectML / WinRT) sem necessidade de dependências pesadas, com filtro para remoção de marca-texto.
 - **Princípio Read-Only**: nenhuma alteração é feita nos diretórios dos documentos lidos; metadados e cache residem exclusivamente em `%LOCALAPPDATA%\LoTra\`.
 - **Identificação por Fingerprint**: arquivos movidos ou renomeados mantêm histórico e contexto via hash dos primeiros 64 KB.

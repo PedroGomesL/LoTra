@@ -95,6 +95,9 @@ class LoTraMainWindow:
         # Rodapé com diagnóstico e botões de controle
         self._build_hardware_footer()
 
+        # Atualiza status inicial do motor neural em background
+        self._refresh_neural_status()
+
         # Escuta contínua de callbacks entre threads
         self._after_id = self.root.after(25, self.process_gui_callbacks)
 
@@ -803,6 +806,102 @@ class LoTraMainWindow:
         # Card Motor
         self._create_metric_card(grid, "Tier Recomendado", f"{hw.get('recommended_tier', 'small').upper()} ({hw.get('recommended_model', 'qwen2.5:1.5b')})", 1, 1)
 
+        # Card Motor Neural Local (LLM) & Ciclo de Vida Zero-Friction
+        neural_card = tk.Frame(card, bg="#faf8f5", highlightbackground=self.c_border, highlightthickness=1, padx=12, pady=10)
+        neural_card.pack(fill=tk.X, pady=(0, 10))
+
+        neural_header = tk.Frame(neural_card, bg="#faf8f5")
+        neural_header.pack(fill=tk.X, pady=(0, 4))
+
+        lbl_neural_title = tk.Label(
+            neural_header, 
+            text="🧠 Motor Neural Local (LLM) • Zero-Friction", 
+            font=("Segoe UI", 9, "bold"), 
+            fg=self.c_text, 
+            bg="#faf8f5"
+        )
+        lbl_neural_title.pack(side=tk.LEFT)
+
+        self.lbl_neural_status = tk.Label(
+            neural_header,
+            text="[Verificando...]",
+            font=("Segoe UI", 8, "bold"),
+            fg=self.c_teal_dark,
+            bg=self.c_teal_light,
+            padx=8,
+            pady=2
+        )
+        self.lbl_neural_status.pack(side=tk.RIGHT)
+
+        lbl_neural_desc = tk.Label(
+            neural_card,
+            text="Contenção segura via Windows Job Objects (JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE).\n"
+                 "Zero processos zumbis e zero vazamento de RAM/VRAM ao encerrar o aplicativo.",
+            font=("Segoe UI", 8),
+            fg=self.c_text_muted,
+            bg="#faf8f5",
+            justify=tk.LEFT
+        )
+        lbl_neural_desc.pack(anchor="w", pady=(0, 8))
+
+        ctrl_bar = tk.Frame(neural_card, bg="#faf8f5")
+        ctrl_bar.pack(fill=tk.X)
+
+        self.btn_start_neural = tk.Button(
+            ctrl_bar,
+            text="▶ Iniciar Motor",
+            font=("Segoe UI", 8, "bold"),
+            bg=self.c_teal,
+            fg="#ffffff",
+            relief=tk.FLAT,
+            padx=10,
+            pady=3,
+            cursor="hand2",
+            command=self._on_start_neural_clicked
+        )
+        self.btn_start_neural.pack(side=tk.LEFT, padx=(0, 6))
+
+        self.btn_stop_neural = tk.Button(
+            ctrl_bar,
+            text="⏹ Parar / Liberar VRAM",
+            font=("Segoe UI", 8),
+            bg="#e8dfd2",
+            fg=self.c_text,
+            relief=tk.FLAT,
+            padx=10,
+            pady=3,
+            cursor="hand2",
+            command=self._on_stop_neural_clicked
+        )
+        self.btn_stop_neural.pack(side=tk.LEFT, padx=(0, 6))
+
+        self.btn_refresh_neural = tk.Button(
+            ctrl_bar,
+            text="🔄 Atualizar",
+            font=("Segoe UI", 8),
+            bg="#f1ede6",
+            fg=self.c_text,
+            relief=tk.FLAT,
+            padx=8,
+            pady=3,
+            cursor="hand2",
+            command=self._refresh_neural_status
+        )
+        self.btn_refresh_neural.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.var_neural_enabled = tk.BooleanVar(value=True)
+        self.chk_neural_enable = tk.Checkbutton(
+            ctrl_bar,
+            text="Habilitar Inferência Neural (LLM)",
+            variable=self.var_neural_enabled,
+            font=("Segoe UI", 8),
+            fg=self.c_text,
+            bg="#faf8f5",
+            activebackground="#faf8f5",
+            command=self._on_toggle_neural_enabled
+        )
+        self.chk_neural_enable.pack(side=tk.LEFT)
+
         # Card Privacidade
         priv_frame = tk.Frame(card, bg=self.c_teal_light, padx=12, pady=10, highlightbackground=self.c_teal, highlightthickness=1)
         priv_frame.pack(fill=tk.X, pady=(6, 12))
@@ -931,6 +1030,86 @@ class LoTraMainWindow:
             except Exception as e:
                 res = {"all_passed": False, "error": str(e)}
             _finalize(res)
+
+    def _refresh_neural_status(self):
+        """Atualiza os indicadores do motor neural local de forma assíncrona."""
+        def _worker():
+            try:
+                st = self.app.get_neural_engine_status()
+                models = st.get("models", [])
+                running = st.get("running", False)
+                installed = st.get("installed", False)
+                neural_enabled = st.get("neural_enabled", True)
+
+                if running:
+                    if models:
+                        disp = f"🟢 Ativo • {models[0]} ({len(models)} modelo(s))"
+                    else:
+                        disp = "🟢 Ativo • Servidor Pronto"
+                    badge_bg = "#d4edda"
+                    badge_fg = "#155724"
+                    badge_txt = f"🧠 Neural: {models[0]}" if models else "🧠 Neural: Ativo"
+                elif installed:
+                    disp = "⚪ Inativo • Pronto para Iniciar"
+                    badge_bg = "#fff3cd"
+                    badge_fg = "#856404"
+                    badge_txt = "⚡ Offline Integrado"
+                else:
+                    disp = "⚪ Modo Offline • Zero Dependências"
+                    badge_bg = "#e2e3e5"
+                    badge_fg = "#383d41"
+                    badge_txt = "⚡ Offline Integrado"
+
+                def _ui():
+                    if hasattr(self, "lbl_neural_status") and self.lbl_neural_status.winfo_exists():
+                        self.lbl_neural_status.config(text=disp, bg=badge_bg, fg=badge_fg)
+                    if hasattr(self, "btn_start_neural") and self.btn_start_neural.winfo_exists():
+                        self.btn_start_neural.config(state=tk.NORMAL if (installed and not running) else tk.DISABLED)
+                    if hasattr(self, "btn_stop_neural") and self.btn_stop_neural.winfo_exists():
+                        self.btn_stop_neural.config(state=tk.NORMAL if running else tk.DISABLED)
+                    if hasattr(self, "lbl_engine_badge") and self.lbl_engine_badge.winfo_exists():
+                        if neural_enabled and running:
+                            self.lbl_engine_badge.config(text=badge_txt, bg=self.c_teal_light, fg=self.c_teal_dark)
+                        else:
+                            self.lbl_engine_badge.config(text="⚡ Offline Integrado", bg="#f1ede6", fg=self.c_text_muted)
+
+                self._schedule_on_ui_thread(_ui)
+            except Exception:
+                pass
+
+        threading.Thread(target=_worker, daemon=True, name="LoTra_NeuralStatus_Worker").start()
+
+    def _on_start_neural_clicked(self):
+        """Inicia o motor neural local com feedback visual imediato sob Windows Job Objects."""
+        if hasattr(self, "btn_start_neural") and self.btn_start_neural.winfo_exists():
+            self.btn_start_neural.config(state=tk.DISABLED)
+        if hasattr(self, "lbl_neural_status") and self.lbl_neural_status.winfo_exists():
+            self.lbl_neural_status.config(text="⏳ Inicializando motor...", bg="#fff3cd", fg="#856404")
+
+        def _worker():
+            self.app.start_neural_engine()
+            self._schedule_on_ui_thread(self._refresh_neural_status)
+
+        threading.Thread(target=_worker, daemon=True, name="LoTra_StartNeural_Worker").start()
+
+    def _on_stop_neural_clicked(self):
+        """Para o motor neural local e descarrega VRAM com feedback visual."""
+        if hasattr(self, "btn_stop_neural") and self.btn_stop_neural.winfo_exists():
+            self.btn_stop_neural.config(state=tk.DISABLED)
+        if hasattr(self, "lbl_neural_status") and self.lbl_neural_status.winfo_exists():
+            self.lbl_neural_status.config(text="⏳ Descarregando VRAM...", bg="#fff3cd", fg="#856404")
+
+        def _worker():
+            self.app.stop_neural_engine()
+            self._schedule_on_ui_thread(self._refresh_neural_status)
+
+        threading.Thread(target=_worker, daemon=True, name="LoTra_StopNeural_Worker").start()
+
+    def _on_toggle_neural_enabled(self):
+        """Alterna a ativação da inferência neural local."""
+        val = self.var_neural_enabled.get()
+        self.app.set_neural_enabled(val)
+        self._refresh_neural_status()
 
     def _build_hardware_footer(self):
         """Barra de rodapé com diagnóstico de hardware e botões de gerenciamento."""
